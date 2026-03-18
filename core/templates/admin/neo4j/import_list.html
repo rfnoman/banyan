@@ -1,0 +1,480 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Import Contacts — Banyan Tree Admin{% endblock %}
+{% block content_title %}<h1>Import Contacts <span class="text-base-500 text-lg font-normal">(Neo4j)</span></h1>{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div class="mb-4 space-y-2">
+    {% for message in messages %}
+    <div class="rounded-md px-4 py-3 text-sm {% if message.tags == 'success' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200{% else %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- ==================== IMPORT ACTIONS ==================== -->
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
+
+    <!-- LinkedIn Scrape Card -->
+    <div class="rounded-lg border border-base-200 bg-white p-5 shadow-sm dark:border-base-700 dark:bg-base-900">
+        <div class="flex items-center gap-2 mb-4">
+            <span class="material-symbols-outlined text-primary-600">link</span>
+            <h2 class="text-base font-semibold text-base-900 dark:text-white">LinkedIn Scrape</h2>
+        </div>
+        <form method="post" class="space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="linkedin_scrape">
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">LinkedIn URL *</label>
+                <input type="url" name="linkedin_url" required placeholder="https://linkedin.com/in/..."
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+            </div>
+            <div x-data="{
+                open: false,
+                search: '',
+                selectedName: '',
+                products: [{% for p in all_products %}{ name: '{{ p.name|escapejs }}' }{% if not forloop.last %},{% endif %}{% endfor %}],
+                get filtered() {
+                    if (!this.search) return this.products;
+                    const s = this.search.toLowerCase();
+                    return this.products.filter(p => p.name.toLowerCase().includes(s));
+                }
+            }" class="relative">
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Product</label>
+                <input type="text" name="product" x-model="search" @focus="open = true" @click="open = true"
+                       placeholder="Select or type a product..."
+                       autocomplete="off"
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+                <div x-show="open" @click.outside="open = false" x-cloak
+                     class="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-md border border-base-200 bg-white shadow-lg dark:border-base-600 dark:bg-base-800">
+                    <template x-for="p in filtered" :key="p.name">
+                        <div @click="search = p.name; selectedName = p.name; open = false"
+                             class="cursor-pointer px-3 py-2 text-sm hover:bg-primary-50 dark:hover:bg-base-700 dark:text-white"
+                             x-text="p.name"></div>
+                    </template>
+                    <div x-show="filtered.length === 0" class="px-3 py-2 text-sm text-base-400">No products found</div>
+                </div>
+            </div>
+            <button type="submit"
+                    class="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700">
+                <span class="material-symbols-outlined text-sm mr-1">travel_explore</span> Start Scrape
+            </button>
+        </form>
+    </div>
+
+    <!-- File Upload Card -->
+    <div class="rounded-lg border border-base-200 bg-white p-5 shadow-sm dark:border-base-700 dark:bg-base-900">
+        <div class="flex items-center gap-2 mb-4">
+            <span class="material-symbols-outlined text-green-600">upload_file</span>
+            <h2 class="text-base font-semibold text-base-900 dark:text-white">Import from File</h2>
+        </div>
+        <form method="post" enctype="multipart/form-data" class="space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="file_preview">
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">CSV or XLSX file *</label>
+                <input type="file" name="file" accept=".csv,.xlsx,.xls" required
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-primary-700 dark:border-base-600 dark:bg-base-700 dark:text-white dark:file:bg-base-600 dark:file:text-base-200">
+                <p class="mt-1 text-xs text-base-500">Max 5 MB. Supported: .csv, .xlsx</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button type="submit"
+                        class="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700">
+                    <span class="material-symbols-outlined text-sm mr-1">preview</span> Upload & Preview
+                </button>
+            </div>
+        </form>
+
+        <!-- Format Documentation (collapsible) -->
+        <div x-data="{ open: false }" class="mt-4 border-t border-base-200 dark:border-base-700 pt-3">
+            <button @click="open = !open" class="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-800 dark:text-primary-400">
+                <span class="material-symbols-outlined text-sm" x-text="open ? 'expand_less' : 'expand_more'"></span>
+                Required file format
+            </button>
+            <div x-show="open" x-cloak class="mt-3 rounded-md border border-base-200 bg-base-50 p-4 dark:border-base-700 dark:bg-base-800">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="border-b border-base-200 dark:border-base-700">
+                            <th class="text-left pb-2 font-medium text-base-700 dark:text-base-300">Column</th>
+                            <th class="text-left pb-2 font-medium text-base-700 dark:text-base-300">Required</th>
+                            <th class="text-left pb-2 font-medium text-base-700 dark:text-base-300">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-base-600 dark:text-base-400">
+                        <tr><td class="py-1 font-mono">name</td><td class="py-1 text-red-600 font-semibold">Yes</td><td class="py-1">Contact full name</td></tr>
+                        <tr><td class="py-1 font-mono">email</td><td class="py-1 text-red-600 font-semibold">Yes</td><td class="py-1">Email address (unique key for dedup)</td></tr>
+                        <tr><td class="py-1 font-mono">title</td><td class="py-1">No</td><td class="py-1">Job title</td></tr>
+                        <tr><td class="py-1 font-mono">linkedin_url</td><td class="py-1">No</td><td class="py-1">LinkedIn profile URL</td></tr>
+                        <tr><td class="py-1 font-mono">location</td><td class="py-1">No</td><td class="py-1">City, Country</td></tr>
+                        <tr><td class="py-1 font-mono">company</td><td class="py-1">No</td><td class="py-1">Company name (creates Business &amp; links)</td></tr>
+                    </tbody>
+                </table>
+                <div class="mt-3">
+                    <p class="text-xs font-medium text-base-700 dark:text-base-300 mb-1">Example CSV:</p>
+                    <pre class="rounded bg-base-100 dark:bg-base-900 p-2 text-xs text-base-600 dark:text-base-400 overflow-x-auto">name,email,title,linkedin_url,location,company
+John Doe,john@example.com,CTO,https://linkedin.com/in/johndoe,New York,Acme Inc
+Jane Smith,jane@example.com,VP Sales,,London,</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== FILE PREVIEW ==================== -->
+{% if preview_rows %}
+<div class="mb-6 rounded-lg border-2 border-yellow-300 bg-yellow-50 p-5 shadow-sm dark:border-yellow-700 dark:bg-yellow-900/20">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-yellow-600">preview</span>
+            <h2 class="text-base font-semibold text-base-900 dark:text-white">
+                Preview: {{ preview_filename }} ({{ preview_rows|length }} contact{{ preview_rows|length|pluralize }})
+            </h2>
+        </div>
+        <div class="flex gap-2">
+            <form method="post" class="inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="cancel_preview">
+                <button type="submit"
+                        class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-700 dark:text-base-200">
+                    Cancel
+                </button>
+            </form>
+            <form method="post" class="inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="file_confirm">
+                <button type="submit"
+                        class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700">
+                    <span class="material-symbols-outlined text-sm mr-1 align-middle">check_circle</span>
+                    Confirm Import ({{ preview_rows|length }})
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {% if preview_errors %}
+    <div class="mb-3 rounded-md bg-red-100 px-4 py-2 text-sm text-red-800 dark:bg-red-900/40 dark:text-red-200">
+        <strong>Skipped rows:</strong>
+        <ul class="mt-1 list-disc list-inside">
+            {% for err in preview_errors %}
+            <li>{{ err }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="rounded-md border border-base-200 bg-white dark:border-base-700 dark:bg-base-900 overflow-hidden max-h-80 overflow-y-auto">
+        <table class="w-full text-xs">
+            <thead class="bg-base-50 dark:bg-base-800 sticky top-0">
+                <tr>
+                    <th class="text-left px-3 py-2 font-medium text-base-500">Name</th>
+                    <th class="text-left px-3 py-2 font-medium text-base-500">Email</th>
+                    <th class="text-left px-3 py-2 font-medium text-base-500">Title</th>
+                    <th class="text-left px-3 py-2 font-medium text-base-500">Company</th>
+                    <th class="text-left px-3 py-2 font-medium text-base-500">Location</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-base-100 dark:divide-base-800">
+                {% for row in preview_rows %}
+                <tr class="hover:bg-base-50 dark:hover:bg-base-800">
+                    <td class="px-3 py-2 text-base-900 dark:text-white">{{ row.name }}</td>
+                    <td class="px-3 py-2 text-base-600 dark:text-base-400">{{ row.email }}</td>
+                    <td class="px-3 py-2 text-base-600 dark:text-base-400">{{ row.title|default:"—" }}</td>
+                    <td class="px-3 py-2 text-base-600 dark:text-base-400">{{ row.company|default:"—" }}</td>
+                    <td class="px-3 py-2 text-base-600 dark:text-base-400">{{ row.location|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- ==================== FILTER BAR ==================== -->
+<div class="mb-4 flex flex-wrap items-center gap-3">
+    <form method="get" class="flex flex-wrap items-center gap-3">
+        <input type="text" name="q" value="{{ search_query }}"
+               placeholder="Search by name or email..."
+               class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-800 dark:text-white w-64">
+        <select name="source"
+                class="rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-base-600 dark:bg-base-800 dark:text-white">
+            <option value="" {% if not source_filter %}selected{% endif %}>All Sources</option>
+            <option value="linkedin" {% if source_filter == "linkedin" %}selected{% endif %}>LinkedIn</option>
+            <option value="csv" {% if source_filter == "csv" %}selected{% endif %}>CSV Import</option>
+            <option value="xlsx" {% if source_filter == "xlsx" %}selected{% endif %}>XLSX Import</option>
+            <option value="api" {% if source_filter == "api" %}selected{% endif %}>API</option>
+        </select>
+        <button type="submit"
+                class="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700">
+            <span class="material-symbols-outlined text-sm mr-1">filter_alt</span> Filter
+        </button>
+        {% if search_query or source_filter %}
+        <a href="?" class="text-sm text-base-500 hover:text-base-700 dark:text-base-400">Clear</a>
+        {% endif %}
+    </form>
+    <span class="ml-auto text-sm text-base-500">{{ total }} contact{{ total|pluralize }}</span>
+</div>
+
+<!-- ==================== CONTACTS TABLE ==================== -->
+<div x-data="{
+    selectedIds: [],
+    allChecked: false,
+    toggleAll(checked) {
+        this.allChecked = checked;
+        if (checked) {
+            this.selectedIds = [{% for p in people %}'{{ p.id }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+        } else {
+            this.selectedIds = [];
+        }
+    },
+    toggle(id) {
+        const idx = this.selectedIds.indexOf(id);
+        if (idx > -1) { this.selectedIds.splice(idx, 1); }
+        else { this.selectedIds.push(id); }
+        this.allChecked = this.selectedIds.length === {{ people|length }};
+    }
+}">
+
+<div class="rounded-lg border border-base-200 bg-white shadow-sm dark:border-base-700 dark:bg-base-900 overflow-hidden">
+    <table class="w-full text-sm">
+        <thead class="bg-base-50 dark:bg-base-800">
+            <tr>
+                <th class="px-4 py-3 w-10">
+                    <input type="checkbox" :checked="allChecked" @change="toggleAll($event.target.checked)"
+                           class="rounded border-base-300 text-primary-600 focus:ring-primary-500">
+                </th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Name</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Email</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Title</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Source</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Company</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Location</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Created</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-base-100 dark:divide-base-800">
+            {% for person in people %}
+            <tr class="hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                <td class="px-4 py-3">
+                    <input type="checkbox" :checked="selectedIds.includes('{{ person.id }}')" @change="toggle('{{ person.id }}')"
+                           class="rounded border-base-300 text-primary-600 focus:ring-primary-500">
+                </td>
+                <td class="px-4 py-3">
+                    <a href="/admin/neo4j/people/{{ person.id }}/"
+                       class="font-medium text-primary-600 hover:text-primary-800 dark:text-primary-400">
+                        {{ person.name|default:"—" }}
+                    </a>
+                </td>
+                <td class="px-4 py-3 text-base-700 dark:text-base-300">{{ person.email|default:"—" }}</td>
+                <td class="px-4 py-3 text-base-700 dark:text-base-300">{{ person.title|default:"—" }}</td>
+                <td class="px-4 py-3">
+                    {% if person.source == "apify_linkedin" %}
+                    <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">LinkedIn</span>
+                    {% elif person.source == "csv_import" %}
+                    <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">CSV</span>
+                    {% elif person.source == "xlsx_import" %}
+                    <span class="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800 dark:bg-purple-900 dark:text-purple-200">XLSX</span>
+                    {% elif person.source == "api_external" %}
+                    <span class="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-800 dark:bg-orange-900 dark:text-orange-200">API</span>
+                    {% else %}
+                    <span class="inline-flex items-center rounded-full bg-base-100 px-2 py-0.5 text-xs font-medium text-base-600 dark:bg-base-700 dark:text-base-300">{{ person.source|default:"—" }}</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-base-700 dark:text-base-300">{{ person.company_name|default:"—" }}</td>
+                <td class="px-4 py-3 text-base-700 dark:text-base-300">{{ person.location|default:"—" }}</td>
+                <td class="px-4 py-3 text-base-500 text-xs">{{ person.created_at|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="px-4 py-8 text-center text-base-500">
+                    No imported contacts found{% if search_query %} matching "{{ search_query }}"{% endif %}{% if source_filter %} for source "{{ source_filter }}"{% endif %}.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ==================== BULK ACTIONS ==================== -->
+<div x-show="selectedIds.length > 0" x-cloak
+     class="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-primary-200 bg-primary-50 px-4 py-3 dark:border-primary-800 dark:bg-primary-900/20">
+    <span class="text-sm font-medium text-primary-800 dark:text-primary-200" x-text="selectedIds.length + ' selected'"></span>
+    <span class="text-base-300 dark:text-base-600">|</span>
+    <button @click="document.getElementById('link-business-dialog').showModal()"
+            class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700">
+        <span class="material-symbols-outlined text-sm mr-1">business</span> Link to Business
+    </button>
+    <button @click="document.getElementById('convert-lead-dialog').showModal()"
+            class="inline-flex items-center rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-green-700">
+        <span class="material-symbols-outlined text-sm mr-1">leaderboard</span> Convert to Leads
+    </button>
+</div>
+
+<!-- ==================== LINK TO BUSINESS DIALOG ==================== -->
+<dialog id="link-business-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:max-w-[500px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-base-900 dark:text-white">Link to Business</h2>
+        <button onclick="document.getElementById('link-business-dialog').close()"
+                class="text-base-400 hover:text-base-600 dark:hover:text-base-200">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <form method="post" class="space-y-4"
+          x-data="{
+              open: false,
+              search: '',
+              selectedId: '',
+              selectedName: '',
+              businesses: [{% for b in all_businesses %}{ id: '{{ b.id }}', name: '{{ b.name|escapejs }}', industry: '{{ b.industry|default:""|escapejs }}' }{% if not forloop.last %},{% endif %}{% endfor %}],
+              get filtered() {
+                  if (!this.search) return this.businesses;
+                  const s = this.search.toLowerCase();
+                  return this.businesses.filter(b => b.name.toLowerCase().includes(s));
+              }
+          }">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="link_business">
+        <template x-for="id in selectedIds" :key="id">
+            <input type="hidden" name="selected_ids" :value="id">
+        </template>
+        <input type="hidden" name="business_id" :value="selectedId">
+
+        <div class="relative">
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Business *</label>
+            <input type="text" x-model="search" @focus="open = true" @click="open = true"
+                   placeholder="Search businesses..."
+                   autocomplete="off"
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-base-600 dark:bg-base-700 dark:text-white">
+            <div x-show="open" @click.outside="open = false" x-cloak
+                 class="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-md border border-base-200 bg-white shadow-lg dark:border-base-600 dark:bg-base-800">
+                <template x-for="b in filtered" :key="b.id">
+                    <div @click="selectedId = b.id; selectedName = b.name; search = b.name; open = false"
+                         class="cursor-pointer px-3 py-2 text-sm hover:bg-primary-50 dark:hover:bg-base-700">
+                        <span class="text-base-900 dark:text-white" x-text="b.name"></span>
+                        <span class="text-xs text-base-400 ml-2" x-text="b.industry" x-show="b.industry"></span>
+                    </div>
+                </template>
+                <div x-show="filtered.length === 0" class="px-3 py-2 text-sm text-base-400">No businesses found</div>
+            </div>
+        </div>
+        <p class="text-xs text-base-500" x-show="selectedName" x-text="'Selected: ' + selectedName"></p>
+
+        <div class="flex justify-end gap-3 pt-2">
+            <button type="button" onclick="document.getElementById('link-business-dialog').close()"
+                    class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-700 dark:text-base-200">
+                Cancel
+            </button>
+            <button type="submit" :disabled="!selectedId"
+                    class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                Link to Business
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<!-- ==================== CONVERT TO LEADS DIALOG ==================== -->
+<dialog id="convert-lead-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:max-w-[500px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-base-900 dark:text-white">Convert to Leads</h2>
+        <button onclick="document.getElementById('convert-lead-dialog').close()"
+                class="text-base-400 hover:text-base-600 dark:hover:text-base-200">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <form method="post" class="space-y-4"
+          x-data="{
+              open: false,
+              search: '',
+              productValue: '',
+              products: [{% for p in all_products %}{ name: '{{ p.name|escapejs }}' }{% if not forloop.last %},{% endif %}{% endfor %}],
+              get filtered() {
+                  if (!this.search) return this.products;
+                  const s = this.search.toLowerCase();
+                  return this.products.filter(p => p.name.toLowerCase().includes(s));
+              }
+          }">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="convert_lead">
+        <template x-for="id in selectedIds" :key="id">
+            <input type="hidden" name="selected_ids" :value="id">
+        </template>
+        <input type="hidden" name="product" :value="productValue || search">
+
+        <div class="relative">
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Product *</label>
+            <input type="text" x-model="search" @focus="open = true" @click="open = true"
+                   placeholder="Select or type a product..."
+                   autocomplete="off"
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-base-600 dark:bg-base-700 dark:text-white">
+            <div x-show="open" @click.outside="open = false" x-cloak
+                 class="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-md border border-base-200 bg-white shadow-lg dark:border-base-600 dark:bg-base-800">
+                <template x-for="p in filtered" :key="p.name">
+                    <div @click="productValue = p.name; search = p.name; open = false"
+                         class="cursor-pointer px-3 py-2 text-sm hover:bg-primary-50 dark:hover:bg-base-700 dark:text-white"
+                         x-text="p.name"></div>
+                </template>
+                <div x-show="filtered.length === 0 && search" class="px-3 py-2 text-sm text-base-400">
+                    Will create new product: "<span x-text="search"></span>"
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Stage</label>
+                <select name="stage"
+                        class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-base-600 dark:bg-base-700 dark:text-white">
+                    <option value="new" selected>New</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="qualified">Qualified</option>
+                    <option value="proposal">Proposal</option>
+                    <option value="negotiation">Negotiation</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Score</label>
+                <input type="number" name="score" min="0" max="100" step="0.1" value="0"
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-base-600 dark:bg-base-700 dark:text-white">
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+            <button type="button" onclick="document.getElementById('convert-lead-dialog').close()"
+                    class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-700 dark:text-base-200">
+                Cancel
+            </button>
+            <button type="submit"
+                    class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700">
+                Convert to Leads
+            </button>
+        </div>
+    </form>
+</dialog>
+
+</div><!-- end x-data for selection -->
+
+<!-- ==================== PAGINATION ==================== -->
+{% if has_prev or has_next %}
+<div class="mt-4 flex items-center justify-between">
+    <div>
+        {% if has_prev %}
+        <a href="?page={{ page|add:"-1" }}{% if search_query %}&q={{ search_query }}{% endif %}{% if source_filter %}&source={{ source_filter }}{% endif %}"
+           class="inline-flex items-center rounded-md border border-base-300 bg-white px-3 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-800 dark:text-base-200">
+            &larr; Previous
+        </a>
+        {% endif %}
+    </div>
+    <span class="text-sm text-base-500">Page {{ page }}</span>
+    <div>
+        {% if has_next %}
+        <a href="?page={{ page|add:"1" }}{% if search_query %}&q={{ search_query }}{% endif %}{% if source_filter %}&source={{ source_filter }}{% endif %}"
+           class="inline-flex items-center rounded-md border border-base-300 bg-white px-3 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-800 dark:text-base-200">
+            Next &rarr;
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

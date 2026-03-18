@@ -1,0 +1,453 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Contacts — Banyan Tree Admin{% endblock %}
+{% block content_title %}<h1>Contacts <span class="text-base-500 text-lg font-normal">(Staging Inbox)</span></h1>{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div class="mb-4" x-data="{ show: true }" x-init="setTimeout(() => show = false, 4000)" x-show="show" x-transition>
+    {% for message in messages %}
+    <div class="rounded-md px-4 py-3 text-sm mb-2 {% if message.tags == 'success' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200{% else %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div x-data="{
+    selected: [],
+    allIds: [{% for c in contacts %}'{{ c.id }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+    toggleAll(checked) { this.selected = checked ? [...this.allIds] : []; },
+    convertId: '',
+    convertName: '',
+    convertProduct: '',
+    classifyId: '',
+    classifyName: '',
+    classifyEmail: '',
+    classifyTitle: '',
+    classifyLinkedin: '',
+    classifyLocation: '',
+    classifyCompanyName: '',
+    classifyCompanyIndustry: '',
+    classifyCompanySize: '',
+    classifyCompanyWebsite: '',
+    openClassifyPerson(id, name, email, title, linkedin, location, companyName) {
+        this.classifyId = id;
+        this.classifyName = name;
+        this.classifyEmail = email;
+        this.classifyTitle = title;
+        this.classifyLinkedin = linkedin;
+        this.classifyLocation = location;
+        this.classifyCompanyName = companyName;
+        document.getElementById('classify-person-dialog').showModal();
+    },
+    openClassifyBusiness(id, companyName, name, industry, size, website, location) {
+        this.classifyId = id;
+        this.classifyCompanyName = companyName || name;
+        this.classifyCompanyIndustry = industry;
+        this.classifyCompanySize = size;
+        this.classifyCompanyWebsite = website;
+        this.classifyLocation = location;
+        document.getElementById('classify-business-dialog').showModal();
+    },
+}">
+
+<!-- Filter Bar -->
+<div class="mb-6 flex flex-wrap items-center gap-3">
+    <form method="get" class="flex flex-wrap items-center gap-3 flex-1">
+        <input type="text" name="q" value="{{ search_query }}"
+               placeholder="Search by name or email..."
+               class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-800 dark:text-white w-64">
+        <select name="status"
+                class="rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-base-600 dark:bg-base-800 dark:text-white">
+            <option value="">All Statuses</option>
+            <option value="pending" {% if status_filter == "pending" %}selected{% endif %}>Pending</option>
+            <option value="classified" {% if status_filter == "classified" %}selected{% endif %}>Classified</option>
+            <option value="converted" {% if status_filter == "converted" %}selected{% endif %}>Converted</option>
+            <option value="dismissed" {% if status_filter == "dismissed" %}selected{% endif %}>Dismissed</option>
+        </select>
+        <select name="type"
+                class="rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-base-600 dark:bg-base-800 dark:text-white">
+            <option value="">All Types</option>
+            <option value="person" {% if type_filter == "person" %}selected{% endif %}>Person</option>
+            <option value="business" {% if type_filter == "business" %}selected{% endif %}>Business</option>
+        </select>
+        <select name="source_app"
+                class="rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-base-600 dark:bg-base-800 dark:text-white">
+            <option value="">All Sources</option>
+            {% for app in source_apps %}
+            <option value="{{ app }}" {% if source_filter == app %}selected{% endif %}>{{ app }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit"
+                class="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700">
+            <span class="material-symbols-outlined text-sm mr-1">filter_list</span> Filter
+        </button>
+        {% if search_query or status_filter or type_filter or source_filter %}
+        <a href="?" class="text-sm text-base-500 hover:text-base-700 dark:text-base-400">Clear</a>
+        {% endif %}
+    </form>
+    <div class="text-sm text-base-500">{{ total }} contact{{ total|pluralize }}</div>
+</div>
+
+<!-- Bulk Actions Bar -->
+<div x-show="selected.length > 0" x-transition
+     class="mb-4 flex items-center gap-3 rounded-md bg-primary-50 dark:bg-primary-900/30 px-4 py-3 border border-primary-200 dark:border-primary-800">
+    <span class="text-sm font-medium text-primary-700 dark:text-primary-300"
+          x-text="selected.length + ' selected'"></span>
+    <form method="post" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="bulk_classify">
+        <input type="hidden" name="contact_type" value="person">
+        <template x-for="id in selected"><input type="hidden" name="selected_ids" :value="id"></template>
+        <button type="submit"
+                class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">
+            <span class="material-symbols-outlined text-xs mr-1">person</span> Classify as Person
+        </button>
+    </form>
+    <form method="post" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="bulk_classify">
+        <input type="hidden" name="contact_type" value="business">
+        <template x-for="id in selected"><input type="hidden" name="selected_ids" :value="id"></template>
+        <button type="submit"
+                class="inline-flex items-center rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700">
+            <span class="material-symbols-outlined text-xs mr-1">business</span> Classify as Business
+        </button>
+    </form>
+    <form method="post" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="bulk_dismiss">
+        <template x-for="id in selected"><input type="hidden" name="selected_ids" :value="id"></template>
+        <button type="submit"
+                class="inline-flex items-center rounded-md bg-base-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-base-600">
+            <span class="material-symbols-outlined text-xs mr-1">block</span> Dismiss
+        </button>
+    </form>
+</div>
+
+<!-- Table -->
+<div class="rounded-lg border border-base-200 bg-white shadow-sm dark:border-base-700 dark:bg-base-900 overflow-hidden">
+    <table class="w-full text-sm">
+        <thead class="bg-base-50 dark:bg-base-800">
+            <tr>
+                <th class="px-3 py-3 w-10">
+                    <input type="checkbox" @change="toggleAll($event.target.checked)"
+                           class="rounded border-base-300 dark:border-base-600">
+                </th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Name</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Email</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Company</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Source</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Product</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Type</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Status</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Created</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-base-100 dark:divide-base-800">
+            {% for contact in contacts %}
+            <tr class="hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                <td class="px-3 py-3">
+                    <input type="checkbox" value="{{ contact.id }}"
+                           x-model="selected"
+                           class="rounded border-base-300 dark:border-base-600">
+                </td>
+                <td class="px-4 py-3 font-medium text-base-900 dark:text-white">
+                    {{ contact.name|default:"—" }}
+                    {% if contact.title %}
+                    <div class="text-xs text-base-400">{{ contact.title }}</div>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-base-700 dark:text-base-300">
+                    {{ contact.email|default:"—" }}
+                </td>
+                <td class="px-4 py-3 text-base-700 dark:text-base-300">
+                    {{ contact.company_name|default:"—" }}
+                </td>
+                <td class="px-4 py-3 text-base-700 dark:text-base-300">
+                    {% if contact.source_app %}
+                    <span class="inline-flex items-center rounded-full bg-base-100 dark:bg-base-700 px-2 py-0.5 text-xs font-medium text-base-600 dark:text-base-300">
+                        {{ contact.source_app }}
+                    </span>
+                    {% else %}—{% endif %}
+                </td>
+                <td class="px-4 py-3 text-base-700 dark:text-base-300">
+                    {{ contact.source_product|default:"—" }}
+                </td>
+                <td class="px-4 py-3">
+                    {% if contact.contact_type == "person" %}
+                    <span class="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+                        <span class="material-symbols-outlined text-xs mr-0.5">person</span> Person
+                    </span>
+                    {% elif contact.contact_type == "business" %}
+                    <span class="inline-flex items-center rounded-full bg-purple-100 dark:bg-purple-900 px-2 py-0.5 text-xs font-medium text-purple-700 dark:text-purple-300">
+                        <span class="material-symbols-outlined text-xs mr-0.5">business</span> Business
+                    </span>
+                    {% else %}
+                    <span class="text-xs text-base-400">—</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3">
+                    {% if contact.status == "pending" %}
+                    <span class="inline-flex items-center rounded-full bg-yellow-100 dark:bg-yellow-900 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:text-yellow-300">Pending</span>
+                    {% elif contact.status == "classified" %}
+                    <span class="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">Classified</span>
+                    {% elif contact.status == "converted" %}
+                    <span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-300">Converted</span>
+                    {% elif contact.status == "dismissed" %}
+                    <span class="inline-flex items-center rounded-full bg-base-100 dark:bg-base-700 px-2 py-0.5 text-xs font-medium text-base-500 dark:text-base-400">Dismissed</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-base-500 text-xs">
+                    {{ contact.created_at|default:"—" }}
+                </td>
+                <td class="px-4 py-3">
+                    <div class="flex items-center gap-1">
+                        {% if contact.status == "pending" %}
+                        <!-- Classify as Person -->
+                        <button type="button" title="Classify as Person"
+                                @click="openClassifyPerson('{{ contact.id }}', '{{ contact.name|escapejs }}', '{{ contact.email|default:""|escapejs }}', '{{ contact.title|default:""|escapejs }}', '{{ contact.linkedin_url|default:""|escapejs }}', '{{ contact.location|default:""|escapejs }}', '{{ contact.company_name|default:""|escapejs }}')"
+                                class="inline-flex items-center rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30">
+                            <span class="material-symbols-outlined text-sm">person</span>
+                        </button>
+                        <!-- Classify as Business -->
+                        <button type="button" title="Classify as Business"
+                                @click="openClassifyBusiness('{{ contact.id }}', '{{ contact.company_name|default:""|escapejs }}', '{{ contact.name|escapejs }}', '{{ contact.company_industry|default:""|escapejs }}', '{{ contact.company_size|default:""|escapejs }}', '{{ contact.company_website|default:""|escapejs }}', '{{ contact.location|default:""|escapejs }}')"
+                                class="inline-flex items-center rounded px-2 py-1 text-xs font-medium text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/30">
+                            <span class="material-symbols-outlined text-sm">business</span>
+                        </button>
+                        <!-- Dismiss -->
+                        <form method="post" class="inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="dismiss">
+                            <input type="hidden" name="contact_id" value="{{ contact.id }}">
+                            <button type="submit" title="Dismiss"
+                                    class="inline-flex items-center rounded px-2 py-1 text-xs font-medium text-base-400 hover:bg-base-100 dark:hover:bg-base-700">
+                                <span class="material-symbols-outlined text-sm">block</span>
+                            </button>
+                        </form>
+                        {% elif contact.status == "classified" and contact.contact_type == "person" %}
+                        <!-- Convert to Lead -->
+                        <button type="button" title="Convert to Lead"
+                                @click="convertId = '{{ contact.id }}'; convertName = '{{ contact.name|escapejs }}'; convertProduct = '{{ contact.source_product|default:""|escapejs }}'; document.getElementById('convert-dialog').showModal()"
+                                class="inline-flex items-center rounded px-2 py-1 text-xs font-medium text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/30">
+                            <span class="material-symbols-outlined text-sm mr-0.5">trending_up</span> Convert
+                        </button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="10" class="px-4 py-8 text-center text-base-500">
+                    No contacts found{% if search_query %} matching "{{ search_query }}"{% endif %}.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if has_prev or has_next %}
+<div class="mt-4 flex items-center justify-between">
+    <div>
+        {% if has_prev %}
+        <a href="?page={{ page|add:"-1" }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if source_filter %}&source_app={{ source_filter }}{% endif %}"
+           class="inline-flex items-center rounded-md border border-base-300 bg-white px-3 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-800 dark:text-base-200">
+            &larr; Previous
+        </a>
+        {% endif %}
+    </div>
+    <span class="text-sm text-base-500">Page {{ page }}</span>
+    <div>
+        {% if has_next %}
+        <a href="?page={{ page|add:"1" }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if source_filter %}&source_app={{ source_filter }}{% endif %}"
+           class="inline-flex items-center rounded-md border border-base-300 bg-white px-3 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-800 dark:text-base-200">
+            Next &rarr;
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Convert to Lead Dialog -->
+<dialog id="convert-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:max-w-[500px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-base-900 dark:text-white">Convert to Lead</h2>
+        <button onclick="document.getElementById('convert-dialog').close()"
+                class="text-base-400 hover:text-base-600 dark:hover:text-base-200">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <p class="text-sm text-base-600 dark:text-base-400 mb-4">
+        Converting <strong x-text="convertName"></strong> to a lead.
+    </p>
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="convert_lead">
+        <input type="hidden" name="contact_id" :value="convertId">
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Product *</label>
+            <select name="product" required
+                    class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+                <option value="">Select product...</option>
+                {% for p in all_products %}
+                <option value="{{ p.name }}">{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Stage</label>
+            <select name="stage"
+                    class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+                <option value="New Lead" selected>New Lead</option>
+                <option value="contacted">Contacted</option>
+                <option value="qualified">Qualified</option>
+                <option value="proposal">Proposal</option>
+                <option value="negotiation">Negotiation</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Score</label>
+            <input type="number" name="score" min="0" max="100" step="0.1" placeholder="40.0"
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+            <p class="text-xs text-base-400 mt-1">Leave blank for default score (40).</p>
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+            <button type="button" onclick="document.getElementById('convert-dialog').close()"
+                    class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-700 dark:text-base-200">
+                Cancel
+            </button>
+            <button type="submit"
+                    class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700">
+                Convert to Lead
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Classify as Person Dialog -->
+<dialog id="classify-person-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:max-w-[500px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-base-900 dark:text-white">Classify as Person</h2>
+        <button onclick="document.getElementById('classify-person-dialog').close()"
+                class="text-base-400 hover:text-base-600 dark:hover:text-base-200">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <p class="text-sm text-base-600 dark:text-base-400 mb-4">
+        Review and complete the details before classifying as a person.
+    </p>
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="classify">
+        <input type="hidden" name="contact_id" :value="classifyId">
+        <input type="hidden" name="contact_type" value="person">
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Name *</label>
+            <input type="text" name="name" x-model="classifyName" required
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Email *</label>
+            <input type="email" name="email" x-model="classifyEmail" required
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white"
+                   placeholder="Required for person records">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Title</label>
+            <input type="text" name="title" x-model="classifyTitle"
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">LinkedIn URL</label>
+            <input type="text" name="linkedin_url" x-model="classifyLinkedin"
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Location</label>
+            <input type="text" name="location" x-model="classifyLocation"
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+        </div>
+        <template x-if="classifyCompanyName">
+            <div class="rounded-md bg-base-50 dark:bg-base-700 px-3 py-2 text-sm text-base-600 dark:text-base-300">
+                <span class="material-symbols-outlined text-xs mr-1 align-middle">business</span>
+                Will be linked to company: <strong x-text="classifyCompanyName"></strong>
+            </div>
+        </template>
+        <div class="flex justify-end gap-3 pt-2">
+            <button type="button" onclick="document.getElementById('classify-person-dialog').close()"
+                    class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-700 dark:text-base-200">
+                Cancel
+            </button>
+            <button type="submit"
+                    class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700">
+                <span class="material-symbols-outlined text-sm mr-1 align-middle">person</span> Classify as Person
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Classify as Business Dialog -->
+<dialog id="classify-business-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:max-w-[500px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-base-900 dark:text-white">Classify as Business</h2>
+        <button onclick="document.getElementById('classify-business-dialog').close()"
+                class="text-base-400 hover:text-base-600 dark:hover:text-base-200">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <p class="text-sm text-base-600 dark:text-base-400 mb-4">
+        Review and complete the details before classifying as a business.
+    </p>
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="classify">
+        <input type="hidden" name="contact_id" :value="classifyId">
+        <input type="hidden" name="contact_type" value="business">
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Business Name *</label>
+            <input type="text" name="company_name" x-model="classifyCompanyName" required
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white"
+                   placeholder="Required for business records">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Industry</label>
+            <input type="text" name="company_industry" x-model="classifyCompanyIndustry"
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Size</label>
+            <input type="text" name="company_size" x-model="classifyCompanySize"
+                   placeholder="e.g. 1-10, 11-50, 51-200"
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Website</label>
+            <input type="text" name="company_website" x-model="classifyCompanyWebsite"
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Location</label>
+            <input type="text" name="location" x-model="classifyLocation"
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+            <button type="button" onclick="document.getElementById('classify-business-dialog').close()"
+                    class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-700 dark:text-base-200">
+                Cancel
+            </button>
+            <button type="submit"
+                    class="rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-purple-700">
+                <span class="material-symbols-outlined text-sm mr-1 align-middle">business</span> Classify as Business
+            </button>
+        </div>
+    </form>
+</dialog>
+
+</div>
+{% endblock %}

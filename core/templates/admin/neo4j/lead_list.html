@@ -1,0 +1,119 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Leads — Banyan Tree Admin{% endblock %}
+{% block content_title %}<h1>Leads <span class="text-base-500 text-lg font-normal">(Neo4j)</span></h1>{% endblock %}
+
+{% block content %}
+<div class="mb-4 flex items-center gap-2">
+    <span class="inline-flex items-center rounded-md bg-primary-600 px-3 py-1.5 text-sm font-medium text-white">
+        <span class="material-symbols-outlined text-sm mr-1">table_rows</span> Table View
+    </span>
+    <a href="{% url 'admin-neo4j-pipeline' %}{% if filter_product %}?product={{ filter_product }}{% endif %}{% if filter_persona %}&persona={{ filter_persona }}{% endif %}"
+       class="inline-flex items-center rounded-md border border-base-300 px-3 py-1.5 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:text-base-200 dark:hover:bg-base-800">
+        <span class="material-symbols-outlined text-sm mr-1">view_kanban</span> Pipeline View
+    </a>
+</div>
+
+<div class="mb-6">
+    <form method="get" class="flex items-center gap-3 flex-wrap">
+        <select name="stage"
+                class="rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-base-600 dark:bg-base-800 dark:text-white">
+            <option value="">All Stages</option>
+            <option value="new" {% if filter_stage == "new" %}selected{% endif %}>New</option>
+            <option value="contacted" {% if filter_stage == "contacted" %}selected{% endif %}>Contacted</option>
+            <option value="qualified" {% if filter_stage == "qualified" %}selected{% endif %}>Qualified</option>
+            <option value="proposal" {% if filter_stage == "proposal" %}selected{% endif %}>Proposal</option>
+            <option value="negotiation" {% if filter_stage == "negotiation" %}selected{% endif %}>Negotiation</option>
+            <option value="won" {% if filter_stage == "won" %}selected{% endif %}>Won</option>
+            <option value="lost" {% if filter_stage == "lost" %}selected{% endif %}>Lost</option>
+        </select>
+        <input type="text" name="product" value="{{ filter_product }}"
+               placeholder="Product..."
+               class="rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-base-600 dark:bg-base-800 dark:text-white w-40">
+        <input type="text" name="persona" value="{{ filter_persona }}"
+               placeholder="AI Persona..."
+               class="rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-base-600 dark:bg-base-800 dark:text-white w-40">
+        <button type="submit"
+                class="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700">
+            <span class="material-symbols-outlined text-sm mr-1">filter_list</span> Filter
+        </button>
+        {% if filter_stage or filter_product or filter_persona %}
+        <a href="?" class="text-sm text-base-500 hover:text-base-700 dark:text-base-400">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="rounded-lg border border-base-200 bg-white shadow-sm dark:border-base-700 dark:bg-base-900 overflow-hidden">
+    <table class="w-full text-sm">
+        <thead class="bg-base-50 dark:bg-base-800">
+            <tr>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Person</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Company</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Product</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Stage</th>
+                <th class="text-right px-4 py-3 font-medium text-base-500">Score</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">AI Persona</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Urgency</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-base-100 dark:divide-base-800">
+            {% for lead in leads %}
+            <tr class="hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                <td class="px-4 py-3">
+                    <a href="/admin/neo4j/people/{{ lead.id }}/"
+                       class="font-medium text-primary-600 hover:text-primary-800 dark:text-primary-400">
+                        {{ lead.name|default:"—" }}
+                    </a>
+                    <div class="text-xs text-base-500">{{ lead.email|default:"" }}</div>
+                </td>
+                <td class="px-4 py-3 text-base-700 dark:text-base-300">
+                    {{ lead.company.name|default:"—" }}
+                </td>
+                <td class="px-4 py-3">
+                    {% if lead.product.name %}
+                    <span class="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                        {{ lead.product.name }}
+                    </span>
+                    {% else %}—{% endif %}
+                </td>
+                <td class="px-4 py-3">
+                    {% with stage=lead.lead_stage %}
+                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
+                        {% if stage == 'won' %}bg-green-100 text-green-800
+                        {% elif stage == 'lost' %}bg-red-100 text-red-800
+                        {% elif stage == 'qualified' or stage == 'proposal' %}bg-blue-100 text-blue-800
+                        {% elif stage == 'negotiation' %}bg-yellow-100 text-yellow-800
+                        {% else %}bg-base-100 text-base-800{% endif %}">
+                        {{ stage|default:"—" }}
+                    </span>
+                    {% endwith %}
+                </td>
+                <td class="px-4 py-3 text-right font-mono">
+                    <span class="{% if lead.score >= 70 %}text-green-600{% elif lead.score >= 40 %}text-yellow-600{% else %}text-base-500{% endif %}">
+                        {{ lead.score|floatformat:0 }}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-sm text-base-700 dark:text-base-300">{{ lead.ai_persona|default:"—" }}</td>
+                <td class="px-4 py-3">
+                    {% if lead.ai_urgency %}
+                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
+                        {% if lead.ai_urgency == 'high' %}bg-red-100 text-red-800
+                        {% elif lead.ai_urgency == 'medium' %}bg-yellow-100 text-yellow-800
+                        {% else %}bg-green-100 text-green-800{% endif %}">
+                        {{ lead.ai_urgency }}
+                    </span>
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="px-4 py-8 text-center text-base-500">
+                    No leads found with the current filters.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

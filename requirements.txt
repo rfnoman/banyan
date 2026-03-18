@@ -1,0 +1,42 @@
+# Core
+django==5.0.*
+djangorestframework
+django-cors-headers
+djangorestframework-simplejwt
+django-unfold
+
+# Async / WebSocket
+channels
+channels-redis
+daphne
+
+# Task queue
+celery
+redis
+
+# Messaging
+pika
+
+# Databases
+neo4j-driver
+psycopg2-binary
+clickhouse-driver
+
+# LLM
+anthropic
+
+# Validation
+pydantic
+
+# Static files
+whitenoise
+
+# Utils
+python-dotenv
+openpyxl
+
+# Debug / Dev
+django-extensions
+ipython
+Werkzeug
+requests

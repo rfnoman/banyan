@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs kill:*)",
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(xargs ls:*)",
+      "Bash(grep -E '\\\\.\\(ts|tsx|js|jsx\\)$')"
+    ]
+  }
+}

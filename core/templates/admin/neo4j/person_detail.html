@@ -1,0 +1,443 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ person.name }} — Banyan Tree Admin{% endblock %}
+{% block content_title %}
+<h1>
+    <a href="/admin/neo4j/people/" class="text-primary-600 hover:text-primary-800 dark:text-primary-400">People</a>
+    <span class="text-base-400 mx-2">/</span>
+    {{ person.name|default:"Unknown" }}
+</h1>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div class="mb-4">
+    {% for message in messages %}
+    <div data-message class="rounded-md px-4 py-3 text-sm {% if message.tags == 'success' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% else %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <!-- Main Info -->
+    <div class="lg:col-span-2 space-y-6">
+        <div class="rounded-lg border border-base-200 bg-white p-6 shadow-sm dark:border-base-700 dark:bg-base-900">
+            <h3 class="text-lg font-semibold text-base-900 dark:text-white mb-4">
+                <span class="material-symbols-outlined text-primary-500 mr-1 align-middle">person</span>
+                Contact Information
+            </h3>
+            <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Name</dt>
+                    <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ person.name|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Email</dt>
+                    <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ person.email|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Title</dt>
+                    <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ person.title|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Location</dt>
+                    <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ person.location|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Source</dt>
+                    <dd class="mt-1">
+                        {% if person.source %}
+                        <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">{{ person.source }}</span>
+                        {% else %}—{% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">LinkedIn</dt>
+                    <dd class="mt-1 text-sm">
+                        {% if person.linkedin_url %}
+                        <a href="{{ person.linkedin_url }}" target="_blank" class="text-primary-600 hover:text-primary-800 dark:text-primary-400">
+                            {{ person.linkedin_url|truncatechars:40 }}
+                        </a>
+                        {% else %}—{% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Created</dt>
+                    <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ person.created_at|default:"—" }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Company -->
+        {% if person.company %}
+        <div class="rounded-lg border border-base-200 bg-white p-6 shadow-sm dark:border-base-700 dark:bg-base-900">
+            <h3 class="text-lg font-semibold text-base-900 dark:text-white mb-4">
+                <span class="material-symbols-outlined text-primary-500 mr-1 align-middle">business</span>
+                Company
+            </h3>
+            <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Name</dt>
+                    <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ person.company.name|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Industry</dt>
+                    <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ person.company.industry|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Size</dt>
+                    <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ person.company.size|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Website</dt>
+                    <dd class="mt-1 text-sm">
+                        {% if person.company.website %}
+                        <a href="{{ person.company.website }}" target="_blank" class="text-primary-600 hover:text-primary-800">{{ person.company.website|truncatechars:40 }}</a>
+                        {% else %}—{% endif %}
+                    </dd>
+                </div>
+            </dl>
+        </div>
+        {% endif %}
+
+        <!-- Actions -->
+        {% if person.actions %}
+        <div class="rounded-lg border border-base-200 bg-white p-6 shadow-sm dark:border-base-700 dark:bg-base-900">
+            <h3 class="text-lg font-semibold text-base-900 dark:text-white mb-4">
+                <span class="material-symbols-outlined text-primary-500 mr-1 align-middle">history</span>
+                Actions ({{ person.actions|length }})
+            </h3>
+            <div class="divide-y divide-base-100 dark:divide-base-800">
+                {% for action in person.actions %}
+                <div class="py-3">
+                    <div class="flex items-center justify-between">
+                        <span class="inline-flex items-center rounded-full bg-base-100 px-2.5 py-0.5 text-xs font-medium text-base-800 dark:bg-base-700 dark:text-base-200">
+                            {{ action.type }}
+                        </span>
+                        <span class="text-xs text-base-500">{{ action.timestamp }}</span>
+                    </div>
+                    {% if action.note %}
+                    <p class="mt-1 text-sm text-base-700 dark:text-base-300">{{ action.note }}</p>
+                    {% endif %}
+                    {% if action.channel %}
+                    <p class="mt-1 text-xs text-base-500">via {{ action.channel }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Score -->
+        <div class="rounded-lg border border-base-200 bg-white p-6 shadow-sm dark:border-base-700 dark:bg-base-900">
+            <h3 class="text-sm font-medium text-base-500 uppercase tracking-wide mb-2">Lead Score</h3>
+            <p class="text-4xl font-bold {% if person.score >= 70 %}text-green-600{% elif person.score >= 40 %}text-yellow-600{% else %}text-base-400{% endif %}">
+                {{ person.score|floatformat:0|default:"0" }}
+            </p>
+        </div>
+
+        <!-- AI Tags -->
+        <div class="rounded-lg border border-base-200 bg-white p-6 shadow-sm dark:border-base-700 dark:bg-base-900">
+            <h3 class="text-lg font-semibold text-base-900 dark:text-white mb-4">
+                <span class="material-symbols-outlined text-primary-500 mr-1 align-middle">smart_toy</span>
+                AI Analysis
+            </h3>
+            <dl class="space-y-3">
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Status</dt>
+                    <dd class="mt-1">
+                        {% if person.ai_tag_status == "auto" %}
+                        <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Auto-tagged</span>
+                        {% elif person.ai_tag_status == "overridden" %}
+                        <span class="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800">Overridden</span>
+                        {% else %}
+                        <span class="inline-flex items-center rounded-full bg-base-100 px-2 py-0.5 text-xs font-medium text-base-600">Pending</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                {% if person.ai_persona %}
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Persona</dt>
+                    <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ person.ai_persona }}</dd>
+                </div>
+                {% endif %}
+                {% if person.ai_urgency %}
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Urgency</dt>
+                    <dd class="mt-1">
+                        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
+                            {% if person.ai_urgency == 'high' %}bg-red-100 text-red-800{% elif person.ai_urgency == 'medium' %}bg-yellow-100 text-yellow-800{% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ person.ai_urgency }}
+                        </span>
+                    </dd>
+                </div>
+                {% endif %}
+                {% if person.ai_product_fit %}
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Product Fit</dt>
+                    <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ person.ai_product_fit }}</dd>
+                </div>
+                {% endif %}
+                {% if ai_tags_parsed %}
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Tags</dt>
+                    <dd class="mt-1 flex flex-wrap gap-1">
+                        {% for tag in ai_tags_parsed %}
+                        <span class="inline-flex items-center rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-800 dark:bg-primary-900 dark:text-primary-200">{{ tag }}</span>
+                        {% endfor %}
+                    </dd>
+                </div>
+                {% endif %}
+                {% if person.ai_reasoning %}
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">AI Reasoning</dt>
+                    <dd class="mt-1 text-sm text-base-700 dark:text-base-300">{{ person.ai_reasoning }}</dd>
+                </div>
+                {% endif %}
+                {% if person.ai_tagged_at %}
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Tagged At</dt>
+                    <dd class="mt-1 text-xs text-base-500">{{ person.ai_tagged_at }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+
+        <!-- Products -->
+        {% if person.products %}
+        <div class="rounded-lg border border-base-200 bg-white p-6 shadow-sm dark:border-base-700 dark:bg-base-900">
+            <h3 class="text-sm font-medium text-base-500 uppercase tracking-wide mb-3">Products</h3>
+            <ul class="space-y-2">
+                {% for product in person.products %}
+                <li class="flex items-center">
+                    <span class="material-symbols-outlined text-sm text-primary-500 mr-2">inventory_2</span>
+                    <span class="text-sm text-base-900 dark:text-white">{{ product.name }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Link to Business -->
+        <div class="rounded-lg border border-base-200 bg-white p-6 shadow-sm dark:border-base-700 dark:bg-base-900">
+            <h3 class="text-sm font-medium text-base-500 uppercase tracking-wide mb-3">Link to Business</h3>
+            {% if person.company %}
+            <p class="text-xs text-base-500 mb-2">Currently linked to:</p>
+            <p class="text-sm font-medium text-base-900 dark:text-white mb-3">{{ person.company.name }}</p>
+            <p class="text-xs text-base-500 mb-3">You can link to a different business below.</p>
+            {% else %}
+            <p class="text-xs text-base-500 mb-3">This person is not linked to any business.</p>
+            {% endif %}
+            <button onclick="document.getElementById('link-business-dialog').showModal()"
+                    class="w-full inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700">
+                <span class="material-symbols-outlined text-sm mr-1">domain_add</span> Link to Business
+            </button>
+        </div>
+
+        <!-- Convert to Lead -->
+        <div class="rounded-lg border border-base-200 bg-white p-6 shadow-sm dark:border-base-700 dark:bg-base-900">
+            <h3 class="text-sm font-medium text-base-500 uppercase tracking-wide mb-3">Convert to Lead</h3>
+            <p class="text-xs text-base-500 mb-3">Create a lead relationship for a product.</p>
+            <button onclick="document.getElementById('convert-lead-dialog').showModal()"
+                    class="w-full inline-flex items-center justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700">
+                <span class="material-symbols-outlined text-sm mr-1">trending_up</span> Convert to Lead
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Convert to Lead Dialog -->
+<dialog id="convert-lead-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:max-w-[600px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-base-900 dark:text-white">
+            <span class="material-symbols-outlined text-green-500 mr-1 align-middle">trending_up</span>
+            Convert "{{ person.name }}" to Lead
+        </h2>
+        <button onclick="document.getElementById('convert-lead-dialog').close()"
+                class="text-base-400 hover:text-base-600 dark:hover:text-base-200">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="convert_lead">
+        <div x-data="{
+            open: false,
+            search: '',
+            selectedName: '',
+            items: [
+                {% for prod in all_products %}
+                { id: '{{ prod.id }}', name: '{{ prod.name|escapejs }}' }{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ],
+            get filtered() {
+                if (!this.search) return this.items;
+                const q = this.search.toLowerCase();
+                return this.items.filter(i => i.name.toLowerCase().includes(q));
+            },
+            select(item) {
+                this.selectedName = item.name;
+                this.search = item.name;
+                this.open = false;
+            },
+            clear() {
+                this.selectedName = '';
+                this.search = '';
+            },
+            get productValue() {
+                return this.selectedName || this.search;
+            }
+        }" class="relative">
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Product *</label>
+            <input type="hidden" name="product" :value="productValue">
+            <div class="relative">
+                <input type="text" x-model="search" @focus="open = true" @click="open = true"
+                       @input="if (selectedName && search !== selectedName) { selectedName = ''; }"
+                       placeholder="Search or type a new product name..."
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 pr-8 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+                <button type="button" x-show="search" @click="clear(); $nextTick(() => { open = true; $el.previousElementSibling.focus(); })"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 text-base-400 hover:text-base-600 dark:hover:text-base-200">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            </div>
+            <div x-show="open && items.length > 0" @click.outside="open = false" x-cloak
+                 class="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-base-200 bg-white shadow-lg dark:border-base-600 dark:bg-base-700">
+                <template x-for="item in filtered" :key="item.id">
+                    <button type="button" @click="select(item)"
+                            class="w-full text-left px-3 py-2 text-sm hover:bg-primary-50 dark:hover:bg-base-600 text-base-900 dark:text-white"
+                            :class="{ 'bg-primary-50 dark:bg-base-600': selectedName === item.name }">
+                        <span x-text="item.name" class="font-medium"></span>
+                    </button>
+                </template>
+                <div x-show="filtered.length === 0" class="px-3 py-2 text-sm text-base-500">No matching products. Type to create a new one.</div>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Stage</label>
+                <select name="stage"
+                        class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+                    <option value="new" selected>New</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="qualified">Qualified</option>
+                    <option value="proposal">Proposal</option>
+                    <option value="negotiation">Negotiation</option>
+                    <option value="won">Won</option>
+                    <option value="lost">Lost</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Score (0-100)</label>
+                <input type="number" name="score" min="0" max="100" step="1"
+                       placeholder="{{ person.score|floatformat:0|default:'0' }}"
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+            </div>
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+            <button type="button" onclick="document.getElementById('convert-lead-dialog').close()"
+                    class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-700 dark:text-base-200">
+                Cancel
+            </button>
+            <button type="submit"
+                    class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700">
+                Convert to Lead
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Link to Business Dialog -->
+<dialog id="link-business-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:max-w-[600px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-base-900 dark:text-white">
+            <span class="material-symbols-outlined text-blue-500 mr-1 align-middle">domain_add</span>
+            Link "{{ person.name }}" to Business
+        </h2>
+        <button onclick="document.getElementById('link-business-dialog').close()"
+                class="text-base-400 hover:text-base-600 dark:hover:text-base-200">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="link_business">
+        <div x-data="{
+            open: false,
+            search: '',
+            selectedId: '',
+            selectedLabel: '',
+            items: [
+                {% for biz in all_businesses %}
+                { id: '{{ biz.id }}', name: '{{ biz.name|escapejs }}', industry: '{{ biz.industry|default:""|escapejs }}' }{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ],
+            get filtered() {
+                if (!this.search) return this.items;
+                const q = this.search.toLowerCase();
+                return this.items.filter(i => i.name.toLowerCase().includes(q) || i.industry.toLowerCase().includes(q));
+            },
+            select(item) {
+                this.selectedId = item.id;
+                this.selectedLabel = item.name + (item.industry ? ' (' + item.industry + ')' : '');
+                this.search = this.selectedLabel;
+                this.open = false;
+            },
+            clear() {
+                this.selectedId = '';
+                this.selectedLabel = '';
+                this.search = '';
+            }
+        }" class="relative">
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Select Business *</label>
+            <input type="hidden" name="business_id" :value="selectedId" x-ref="hiddenInput">
+            <div class="relative">
+                <input type="text" x-model="search" @focus="open = true" @click="open = true"
+                       @input="if (selectedId && search !== selectedLabel) { selectedId = ''; selectedLabel = ''; }"
+                       placeholder="Search businesses..."
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 pr-8 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+                <button type="button" x-show="selectedId" @click="clear(); $nextTick(() => { open = true; $el.previousElementSibling.focus(); })"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 text-base-400 hover:text-base-600 dark:hover:text-base-200">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            </div>
+            <div x-show="open" @click.outside="open = false" x-cloak
+                 class="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-base-200 bg-white shadow-lg dark:border-base-600 dark:bg-base-700">
+                <template x-for="item in filtered" :key="item.id">
+                    <button type="button" @click="select(item)"
+                            class="w-full text-left px-3 py-2 text-sm hover:bg-primary-50 dark:hover:bg-base-600 text-base-900 dark:text-white"
+                            :class="{ 'bg-primary-50 dark:bg-base-600': selectedId === item.id }">
+                        <span x-text="item.name" class="font-medium"></span>
+                        <span x-show="item.industry" x-text="'(' + item.industry + ')'" class="text-base-500 ml-1"></span>
+                    </button>
+                </template>
+                <div x-show="filtered.length === 0" class="px-3 py-2 text-sm text-base-500">No businesses found.</div>
+            </div>
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+            <button type="button" onclick="document.getElementById('link-business-dialog').close()"
+                    class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-700 dark:text-base-200">
+                Cancel
+            </button>
+            <button type="submit"
+                    class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700">
+                Link to Business
+            </button>
+        </div>
+    </form>
+</dialog>
+
+{% if messages %}
+<script>
+    // Auto-dismiss messages after 4 seconds
+    setTimeout(function() {
+        document.querySelectorAll('[data-message]').forEach(function(el) { el.remove(); });
+    }, 4000);
+</script>
+{% endif %}
+{% endblock %}

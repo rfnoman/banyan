@@ -1,0 +1,142 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Products — Banyan Tree Admin{% endblock %}
+{% block content_title %}<h1>Products <span class="text-base-500 text-lg font-normal">(Neo4j)</span></h1>{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div class="mb-4">
+    {% for message in messages %}
+    <div class="rounded-md px-4 py-3 text-sm {% if message.tags == 'success' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% else %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="mb-6 flex items-center justify-between">
+    <form method="get" class="flex items-center gap-3">
+        <input type="text" name="q" value="{{ search_query }}"
+               placeholder="Search by name or description..."
+               class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-800 dark:text-white w-80">
+        <button type="submit"
+                class="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700">
+            <span class="material-symbols-outlined text-sm mr-1">search</span> Search
+        </button>
+        {% if search_query %}
+        <a href="?" class="text-sm text-base-500 hover:text-base-700 dark:text-base-400">Clear</a>
+        {% endif %}
+    </form>
+    <button onclick="document.getElementById('add-product-dialog').showModal()"
+            class="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700">
+        <span class="material-symbols-outlined text-sm mr-1">add_box</span> Add Product
+    </button>
+</div>
+
+<!-- Add Product Dialog -->
+<dialog id="add-product-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:max-w-[600px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-base-900 dark:text-white">Add Product</h2>
+        <button onclick="document.getElementById('add-product-dialog').close()"
+                class="text-base-400 hover:text-base-600 dark:hover:text-base-200">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Name *</label>
+            <input type="text" name="name" required
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">URL</label>
+            <input type="url" name="url" placeholder="https://..."
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Description</label>
+            <textarea name="description" rows="3"
+                      class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white"></textarea>
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+            <button type="button" onclick="document.getElementById('add-product-dialog').close()"
+                    class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-700 dark:text-base-200">
+                Cancel
+            </button>
+            <button type="submit"
+                    class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700">
+                Add Product
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<div class="rounded-lg border border-base-200 bg-white shadow-sm dark:border-base-700 dark:bg-base-900 overflow-hidden">
+    <table class="w-full text-sm">
+        <thead class="bg-base-50 dark:bg-base-800">
+            <tr>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Name</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">URL</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Description</th>
+                <th class="text-left px-4 py-3 font-medium text-base-500">Created</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-base-100 dark:divide-base-800">
+            {% for product in products %}
+            <tr class="hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                <td class="px-4 py-3">
+                    <a href="/admin/neo4j/products/{{ product.id }}/"
+                       class="font-medium text-primary-600 hover:text-primary-800 dark:text-primary-400">
+                        {{ product.name|default:"—" }}
+                    </a>
+                </td>
+                <td class="px-4 py-3 text-base-700 dark:text-base-300">
+                    {% if product.url %}
+                    <a href="{{ product.url }}" target="_blank" rel="noopener"
+                       class="text-blue-600 hover:text-blue-800 dark:text-blue-400 truncate max-w-xs inline-block">
+                        {{ product.url|truncatechars:40 }}
+                    </a>
+                    {% else %}—{% endif %}
+                </td>
+                <td class="px-4 py-3 text-base-700 dark:text-base-300">
+                    {{ product.description|default:"—"|truncatechars:60 }}
+                </td>
+                <td class="px-4 py-3 text-base-500">
+                    {{ product.created_at|default:"—" }}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="px-4 py-8 text-center text-base-500">
+                    No products found{% if search_query %} matching "{{ search_query }}"{% endif %}.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if has_prev or has_next %}
+<div class="mt-4 flex items-center justify-between">
+    <div>
+        {% if has_prev %}
+        <a href="?page={{ page|add:"-1" }}{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="inline-flex items-center rounded-md border border-base-300 bg-white px-3 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-800 dark:text-base-200">
+            &larr; Previous
+        </a>
+        {% endif %}
+    </div>
+    <span class="text-sm text-base-500">Page {{ page }}</span>
+    <div>
+        {% if has_next %}
+        <a href="?page={{ page|add:"1" }}{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="inline-flex items-center rounded-md border border-base-300 bg-white px-3 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-800 dark:text-base-200">
+            Next &rarr;
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,220 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ product.name }} — Banyan Tree Admin{% endblock %}
+{% block content_title %}
+<h1>
+    <a href="/admin/neo4j/products/" class="text-primary-600 hover:text-primary-800 dark:text-primary-400">Products</a>
+    <span class="text-base-400 mx-2">/</span>
+    {{ product.name|default:"Unknown" }}
+</h1>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div class="mb-4">
+    {% for message in messages %}
+    <div data-message class="rounded-md px-4 py-3 text-sm {% if message.tags == 'success' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% else %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <!-- Main Info -->
+    <div class="lg:col-span-2 space-y-6">
+        <div class="rounded-lg border border-base-200 bg-white p-6 shadow-sm dark:border-base-700 dark:bg-base-900">
+            <h3 class="text-lg font-semibold text-base-900 dark:text-white mb-4">
+                <span class="material-symbols-outlined text-primary-500 mr-1 align-middle">inventory_2</span>
+                Product Information
+            </h3>
+            <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Name</dt>
+                    <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ product.name|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">URL</dt>
+                    <dd class="mt-1 text-sm">
+                        {% if product.url %}
+                        <a href="{{ product.url }}" target="_blank" rel="noopener"
+                           class="text-primary-600 hover:text-primary-800 dark:text-primary-400">
+                            {{ product.url|truncatechars:50 }}
+                        </a>
+                        {% else %}—{% endif %}
+                    </dd>
+                </div>
+                <div class="sm:col-span-2">
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Description</dt>
+                    <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ product.description|default:"—" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Created</dt>
+                    <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ product.created_at|default:"—" }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Leads Table -->
+        <div class="rounded-lg border border-base-200 bg-white p-6 shadow-sm dark:border-base-700 dark:bg-base-900">
+            <h3 class="text-lg font-semibold text-base-900 dark:text-white mb-4">
+                <span class="material-symbols-outlined text-primary-500 mr-1 align-middle">leaderboard</span>
+                Leads ({{ product.leads|length }})
+            </h3>
+            {% if product.leads %}
+            <div class="overflow-hidden rounded-lg border border-base-200 dark:border-base-700">
+                <table class="w-full text-sm">
+                    <thead class="bg-base-50 dark:bg-base-800">
+                        <tr>
+                            <th class="text-left px-4 py-3 font-medium text-base-500">Name</th>
+                            <th class="text-left px-4 py-3 font-medium text-base-500">Email</th>
+                            <th class="text-left px-4 py-3 font-medium text-base-500">Company</th>
+                            <th class="text-left px-4 py-3 font-medium text-base-500">Stage</th>
+                            <th class="text-right px-4 py-3 font-medium text-base-500">Score</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-100 dark:divide-base-800">
+                        {% for lead in product.leads %}
+                        <tr class="hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                            <td class="px-4 py-3">
+                                <a href="/admin/neo4j/people/{{ lead.id }}/"
+                                   class="font-medium text-primary-600 hover:text-primary-800 dark:text-primary-400">
+                                    {{ lead.name|default:"—" }}
+                                </a>
+                            </td>
+                            <td class="px-4 py-3 text-base-700 dark:text-base-300">{{ lead.email|default:"—" }}</td>
+                            <td class="px-4 py-3 text-base-700 dark:text-base-300">{{ lead.company.name|default:"—" }}</td>
+                            <td class="px-4 py-3">
+                                {% if lead.lead_stage %}
+                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
+                                    {% if lead.lead_stage == 'qualified' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                    {% elif lead.lead_stage == 'contacted' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                                    {% elif lead.lead_stage == 'new' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                    {% else %}bg-base-100 text-base-800 dark:bg-base-700 dark:text-base-200{% endif %}">
+                                    {{ lead.lead_stage }}
+                                </span>
+                                {% else %}—{% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-right font-mono">
+                                {% if lead.lead_score %}
+                                <span class="{% if lead.lead_score >= 70 %}text-green-600{% elif lead.lead_score >= 40 %}text-yellow-600{% else %}text-base-500{% endif %}">
+                                    {{ lead.lead_score|floatformat:0 }}
+                                </span>
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm text-base-500">No leads linked to this product yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Lead Count -->
+        <div class="rounded-lg border border-base-200 bg-white p-6 shadow-sm dark:border-base-700 dark:bg-base-900">
+            <h3 class="text-sm font-medium text-base-500 uppercase tracking-wide mb-2">Total Leads</h3>
+            <p class="text-4xl font-bold text-primary-600">{{ product.leads|length }}</p>
+        </div>
+
+        <!-- Edit Product -->
+        <div class="rounded-lg border border-base-200 bg-white p-6 shadow-sm dark:border-base-700 dark:bg-base-900">
+            <h3 class="text-lg font-semibold text-base-900 dark:text-white mb-4">
+                <span class="material-symbols-outlined text-primary-500 mr-1 align-middle">edit</span>
+                Actions
+            </h3>
+            <div class="space-y-3">
+                <button onclick="document.getElementById('edit-product-dialog').showModal()"
+                        class="w-full inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700">
+                    <span class="material-symbols-outlined text-sm mr-1">edit</span> Edit Product
+                </button>
+                <button onclick="document.getElementById('delete-product-dialog').showModal()"
+                        class="w-full inline-flex items-center justify-center rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-700 dark:bg-base-800 dark:text-red-400 dark:hover:bg-red-900/20">
+                    <span class="material-symbols-outlined text-sm mr-1">delete</span> Delete Product
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Product Dialog -->
+<dialog id="edit-product-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:max-w-[600px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-base-900 dark:text-white">Edit Product</h2>
+        <button onclick="document.getElementById('edit-product-dialog').close()"
+                class="text-base-400 hover:text-base-600 dark:hover:text-base-200">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit_product">
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Name</label>
+            <input type="text" value="{{ product.name }}" disabled
+                   class="w-full rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm text-base-500 dark:border-base-600 dark:bg-base-700 dark:text-base-400 cursor-not-allowed">
+            <p class="mt-1 text-xs text-base-400">Product name cannot be changed after creation.</p>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">URL</label>
+            <input type="url" name="url" value="{{ product.url|default:'' }}" placeholder="https://..."
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Description</label>
+            <textarea name="description" rows="3"
+                      class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">{{ product.description|default:'' }}</textarea>
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+            <button type="button" onclick="document.getElementById('edit-product-dialog').close()"
+                    class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-700 dark:text-base-200">
+                Cancel
+            </button>
+            <button type="submit"
+                    class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700">
+                Save Changes
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Delete Product Dialog -->
+<dialog id="delete-product-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:max-w-[400px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-red-700 dark:text-red-400">Delete Product</h2>
+        <button onclick="document.getElementById('delete-product-dialog').close()"
+                class="text-base-400 hover:text-base-600 dark:hover:text-base-200">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <p class="text-sm text-base-700 dark:text-base-300 mb-4">
+        Are you sure you want to delete <strong>{{ product.name }}</strong>? This will also remove all lead relationships linked to this product. This action cannot be undone.
+    </p>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete_product">
+        <div class="flex justify-end gap-3">
+            <button type="button" onclick="document.getElementById('delete-product-dialog').close()"
+                    class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-700 dark:text-base-200">
+                Cancel
+            </button>
+            <button type="submit"
+                    class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700">
+                Delete
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+// Auto-dismiss messages
+document.querySelectorAll('[data-message]').forEach(el => {
+    setTimeout(() => el.style.display = 'none', 4000);
+});
+</script>
+{% endblock %}
