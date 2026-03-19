@@ -18,6 +18,9 @@ SECURE_HSTS_PRELOAD = True
 
 CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
 
+# Required when running behind Nginx (SSL termination at reverse proxy)
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

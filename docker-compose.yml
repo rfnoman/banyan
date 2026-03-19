@@ -18,8 +18,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      clickhouse:
-        condition: service_healthy
+      # clickhouse:
+      #   condition: service_healthy
 
   celery_worker:
     build: .
@@ -85,29 +85,29 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: graphcrm
+      POSTGRES_DB: banyan
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d graphcrm"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d banyan"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  clickhouse:
-    image: clickhouse/clickhouse-server:24.3
-    ports:
-      - "8123:8123"
-      - "9000:9000"
-    volumes:
-      - clickhouse_data:/var/lib/clickhouse
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8123/ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+  # clickhouse:
+  #   image: clickhouse/clickhouse-server:24.3
+  #   ports:
+  #     - "8123:8123"
+  #     - "9000:9000"
+  #   volumes:
+  #     - clickhouse_data:/var/lib/clickhouse
+  #   healthcheck:
+  #     test: ["CMD", "wget", "-qO-", "http://localhost:8123/ping"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 10
 
   redis:
     image: redis:7.2-alpine
@@ -125,5 +125,5 @@ volumes:
   rabbitmq_data:
   neo4j_data:
   postgres_data:
-  clickhouse_data:
+  # clickhouse_data:
   redis_data:

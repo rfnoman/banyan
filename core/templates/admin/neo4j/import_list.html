@@ -18,51 +18,197 @@
 <!-- ==================== IMPORT ACTIONS ==================== -->
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
 
-    <!-- LinkedIn Scrape Card -->
-    <div class="rounded-lg border border-base-200 bg-white p-5 shadow-sm dark:border-base-700 dark:bg-base-900">
+    <!-- LinkedIn Import Card -->
+    <div class="rounded-lg border border-base-200 bg-white p-5 shadow-sm dark:border-base-700 dark:bg-base-900"
+         x-data="{
+             state: 'input',
+             linkedinUrl: '',
+             error: '',
+             linkedinConfigured: {{ linkedin_configured|yesno:'true,false' }},
+             name: '',
+             email: '',
+             title: '',
+             companyName: '',
+             companyIndustry: '',
+             location: '',
+             scrapedLinkedinUrl: '',
+
+             async scrapeProfile() {
+                 if (!this.linkedinUrl.trim()) {
+                     this.error = 'Please enter a LinkedIn URL.';
+                     return;
+                 }
+                 if (!this.linkedinUrl.includes('linkedin.com/in/')) {
+                     this.error = 'Please enter a valid LinkedIn profile URL (e.g. linkedin.com/in/johndoe).';
+                     return;
+                 }
+                 this.state = 'loading';
+                 this.error = '';
+                 try {
+                     const resp = await fetch('{% url "admin-neo4j-scrape-linkedin" %}', {
+                         method: 'POST',
+                         headers: {
+                             'Content-Type': 'application/json',
+                             'X-CSRFToken': '{{ csrf_token }}',
+                         },
+                         body: JSON.stringify({ linkedin_url: this.linkedinUrl }),
+                     });
+                     const data = await resp.json();
+                     if (!resp.ok) {
+                         this.error = data.error || 'Scrape failed. Please try again.';
+                         this.state = 'input';
+                         return;
+                     }
+                     const p = data.profile;
+                     this.name = p.name || '';
+                     this.email = p.email || '';
+                     this.title = p.title || '';
+                     this.companyName = p.company_name || '';
+                     this.companyIndustry = p.company_industry || '';
+                     this.location = p.location || '';
+                     this.scrapedLinkedinUrl = p.linkedin_url || this.linkedinUrl;
+                     this.state = 'review';
+                 } catch (e) {
+                     this.error = 'Network error. Please try again.';
+                     this.state = 'input';
+                 }
+             },
+
+             enterManually() {
+                 this.scrapedLinkedinUrl = this.linkedinUrl;
+                 this.state = 'review';
+             },
+
+             cancel() {
+                 this.state = 'input';
+                 this.name = ''; this.email = ''; this.title = '';
+                 this.companyName = ''; this.companyIndustry = '';
+                 this.location = ''; this.scrapedLinkedinUrl = '';
+                 this.error = '';
+             }
+         }">
+
+        <!-- Header -->
         <div class="flex items-center gap-2 mb-4">
             <span class="material-symbols-outlined text-primary-600">link</span>
-            <h2 class="text-base font-semibold text-base-900 dark:text-white">LinkedIn Scrape</h2>
+            <h2 class="text-base font-semibold text-base-900 dark:text-white">Import from LinkedIn</h2>
         </div>
-        <form method="post" class="space-y-3">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="linkedin_scrape">
-            <div>
-                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">LinkedIn URL *</label>
-                <input type="url" name="linkedin_url" required placeholder="https://linkedin.com/in/..."
-                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
-            </div>
-            <div x-data="{
-                open: false,
-                search: '',
-                selectedName: '',
-                products: [{% for p in all_products %}{ name: '{{ p.name|escapejs }}' }{% if not forloop.last %},{% endif %}{% endfor %}],
-                get filtered() {
-                    if (!this.search) return this.products;
-                    const s = this.search.toLowerCase();
-                    return this.products.filter(p => p.name.toLowerCase().includes(s));
-                }
-            }" class="relative">
-                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Product</label>
-                <input type="text" name="product" x-model="search" @focus="open = true" @click="open = true"
-                       placeholder="Select or type a product..."
-                       autocomplete="off"
-                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
-                <div x-show="open" @click.outside="open = false" x-cloak
-                     class="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-md border border-base-200 bg-white shadow-lg dark:border-base-600 dark:bg-base-800">
-                    <template x-for="p in filtered" :key="p.name">
-                        <div @click="search = p.name; selectedName = p.name; open = false"
-                             class="cursor-pointer px-3 py-2 text-sm hover:bg-primary-50 dark:hover:bg-base-700 dark:text-white"
-                             x-text="p.name"></div>
-                    </template>
-                    <div x-show="filtered.length === 0" class="px-3 py-2 text-sm text-base-400">No products found</div>
+
+        <!-- Error banner -->
+        <div x-show="error" x-cloak
+             class="mb-3 rounded-md bg-red-100 px-4 py-2 text-sm text-red-800 dark:bg-red-900/40 dark:text-red-200">
+            <span x-text="error"></span>
+        </div>
+
+        <!-- STATE: input -->
+        <div x-show="state === 'input'">
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">LinkedIn Profile URL</label>
+                    <input type="url" x-model="linkedinUrl"
+                           placeholder="https://linkedin.com/in/johndoe"
+                           class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
                 </div>
+                <div class="flex gap-2">
+                    <button x-show="linkedinConfigured" @click="scrapeProfile()" type="button"
+                            class="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700">
+                        <span class="material-symbols-outlined text-sm mr-1">search</span> Scrape Profile
+                    </button>
+                    <button @click="enterManually()" type="button"
+                            class="inline-flex items-center rounded-md border border-base-300 bg-white px-4 py-2 text-sm font-medium text-base-700 shadow-sm hover:bg-base-50 dark:border-base-600 dark:bg-base-700 dark:text-base-200">
+                        <span class="material-symbols-outlined text-sm mr-1">edit</span> Enter Manually
+                    </button>
+                </div>
+                <p x-show="!linkedinConfigured" x-cloak class="text-xs text-yellow-600 dark:text-yellow-400">
+                    LinkedIn scraping not configured. Set LINKEDIN_EMAIL and LINKEDIN_PASSWORD to enable auto-scraping. You can still enter contact details manually.
+                </p>
             </div>
-            <button type="submit"
-                    class="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700">
-                <span class="material-symbols-outlined text-sm mr-1">travel_explore</span> Start Scrape
-            </button>
-        </form>
+        </div>
+
+        <!-- STATE: loading -->
+        <div x-show="state === 'loading'" x-cloak class="text-center py-8">
+            <svg class="animate-spin h-8 w-8 text-primary-600 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-sm text-base-600 dark:text-base-400">Scraping LinkedIn profile...</p>
+            <p class="text-xs text-base-400 dark:text-base-500 mt-1">This may take a few seconds.</p>
+        </div>
+
+        <!-- STATE: review -->
+        <div x-show="state === 'review'" x-cloak>
+            <form method="post" class="space-y-3">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="linkedin_save">
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Name *</label>
+                        <input type="text" name="name" x-model="name" required
+                               class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white"
+                               :class="{ 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20': !name }">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Email *</label>
+                        <input type="email" name="email" x-model="email" required
+                               class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white"
+                               :class="{ 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20': !email }">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Title</label>
+                    <input type="text" name="title" x-model="title"
+                           class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Company</label>
+                        <input type="text" name="company_name" x-model="companyName"
+                               class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Industry</label>
+                        <input type="text" name="company_industry" x-model="companyIndustry"
+                               class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Location</label>
+                        <input type="text" name="location" x-model="location"
+                               class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">LinkedIn URL</label>
+                        <input type="url" name="linkedin_url" x-model="scrapedLinkedinUrl"
+                               class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+                    </div>
+                </div>
+
+                <!-- Warning for missing required fields -->
+                <div x-show="!email || !name" x-cloak
+                     class="rounded-md bg-yellow-50 px-3 py-2 text-xs text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300">
+                    <span class="material-symbols-outlined text-xs align-middle mr-1">warning</span>
+                    <span x-show="!email && !name">Name and email could not be scraped. Please enter them manually.</span>
+                    <span x-show="!email && name">Email could not be scraped. Please enter it manually.</span>
+                    <span x-show="email && !name">Name could not be scraped. Please enter it manually.</span>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" :disabled="!name || !email"
+                            class="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span class="material-symbols-outlined text-sm mr-1">check_circle</span> Save Contact
+                    </button>
+                    <button type="button" @click="cancel()"
+                            class="inline-flex items-center rounded-md border border-base-300 bg-white px-4 py-2 text-sm font-medium text-base-700 shadow-sm hover:bg-base-50 dark:border-base-600 dark:bg-base-700 dark:text-base-200">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- File Upload Card -->
@@ -76,7 +222,7 @@
             <input type="hidden" name="action" value="file_preview">
             <div>
                 <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">CSV or XLSX file *</label>
-                <input type="file" name="file" accept=".csv,.xlsx,.xls" required
+                <input type="file" name="file" accept=".csv,.xlsx" required
                        class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-primary-700 dark:border-base-600 dark:bg-base-700 dark:text-white dark:file:bg-base-600 dark:file:text-base-200">
                 <p class="mt-1 text-xs text-base-500">Max 5 MB. Supported: .csv, .xlsx</p>
             </div>

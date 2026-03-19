@@ -37,3 +37,6 @@ yarn-error.log*
 
 # Docker
 *.override.yml
+
+# Docs (local planning only)
+docs/

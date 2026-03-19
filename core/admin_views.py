@@ -595,6 +595,44 @@ SOURCE_FILTER_MAP = {
 
 
 @method_decorator(staff_member_required, name="dispatch")
+class ImportLinkedInScrapeAPIView(View):
+    """AJAX endpoint: scrape a single LinkedIn profile and return normalized data."""
+
+    def post(self, request):
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+        linkedin_url = (body.get("linkedin_url") or "").strip()
+        if not linkedin_url or "linkedin.com/in/" not in linkedin_url:
+            return JsonResponse(
+                {"error": "Please provide a valid LinkedIn profile URL (e.g. linkedin.com/in/johndoe)."},
+                status=400,
+            )
+
+        try:
+            from integrations.apify.scraper import LinkedInScraper
+            from integrations.apify.transformer import normalize_profile_for_review
+
+            scraper = LinkedInScraper()
+            if not scraper.is_configured:
+                return JsonResponse(
+                    {"error": "LinkedIn credentials not configured. Set LINKEDIN_EMAIL and LINKEDIN_PASSWORD."},
+                    status=503,
+                )
+
+            raw_profile = scraper.scrape_profile(linkedin_url)
+            normalized = normalize_profile_for_review(raw_profile)
+            # Ensure the LinkedIn URL is always the one the user entered
+            normalized["linkedin_url"] = linkedin_url
+            return JsonResponse({"profile": normalized})
+        except Exception as exc:
+            logger.error("LinkedIn scrape failed for %s: %s", linkedin_url, exc)
+            return JsonResponse({"error": str(exc)}, status=500)
+
+
+@method_decorator(staff_member_required, name="dispatch")
 class ImportListView(Neo4jAdminMixin, View):
     """Import contacts: LinkedIn scrape, CSV/XLSX upload, and imported contacts list."""
 
@@ -614,6 +652,10 @@ class ImportListView(Neo4jAdminMixin, View):
         preview_errors = request.session.get("import_preview_errors")
         preview_filename = request.session.get("import_preview_filename")
 
+        # Check if LinkedIn scraping is available
+        from integrations.apify.scraper import LinkedInScraper
+        linkedin_configured = LinkedInScraper().is_configured
+
         context = self.get_admin_context(request, "Import Contacts")
         context.update({
             "people": people,
@@ -629,14 +671,15 @@ class ImportListView(Neo4jAdminMixin, View):
             "preview_rows": preview_rows,
             "preview_errors": preview_errors,
             "preview_filename": preview_filename,
+            "linkedin_configured": linkedin_configured,
         })
         return render(request, "admin/neo4j/import_list.html", context)
 
     def post(self, request):
         action = request.POST.get("action", "")
 
-        if action == "linkedin_scrape":
-            return self._handle_linkedin_scrape(request)
+        if action == "linkedin_save":
+            return self._handle_linkedin_save(request)
         elif action == "file_preview":
             return self._handle_file_preview(request)
         elif action == "file_confirm":
@@ -654,26 +697,36 @@ class ImportListView(Neo4jAdminMixin, View):
         messages.error(request, "Unknown action.")
         return redirect("admin-neo4j-imports")
 
-    def _handle_linkedin_scrape(self, request):
-        linkedin_url = request.POST.get("linkedin_url", "").strip()
-        product = request.POST.get("product", "").strip()
+    def _handle_linkedin_save(self, request):
+        """Save a LinkedIn-scraped (or manually entered) contact."""
+        person_data = {
+            "name": request.POST.get("name", "").strip(),
+            "email": request.POST.get("email", "").strip(),
+            "title": request.POST.get("title", "").strip() or None,
+            "linkedin_url": request.POST.get("linkedin_url", "").strip() or None,
+            "location": request.POST.get("location", "").strip() or None,
+            "source": "apify_linkedin",
+        }
+        company_name = request.POST.get("company_name", "").strip()
+        company_industry = request.POST.get("company_industry", "").strip()
 
-        if not linkedin_url:
-            messages.error(request, "LinkedIn URL is required.")
+        if not person_data["name"] or not person_data["email"]:
+            messages.error(request, "Name and email are required.")
             return redirect("admin-neo4j-imports")
 
         try:
-            from integrations.apify.scraper import ApifyScraper
-            webhook_url = request.build_absolute_uri(reverse("apify-webhook"))
-            scraper = ApifyScraper()
-            run_id = scraper.start_linkedin_scrape(linkedin_url, product or "General", webhook_url)
-            messages.success(
-                request,
-                f"LinkedIn scrape started (run ID: {run_id}). "
-                f"Results will appear here once scraping completes."
-            )
+            person_id = create_or_merge_person(person_data)
+            msg = f'Contact "{person_data["name"]}" imported from LinkedIn.'
+            if company_name:
+                biz_data = {"name": company_name}
+                if company_industry:
+                    biz_data["industry"] = company_industry
+                biz_id = create_or_merge_business(biz_data)
+                link_person_to_business(person_id, biz_id)
+                msg += f' Linked to "{company_name}".'
+            messages.success(request, msg)
         except Exception as e:
-            messages.error(request, f"Failed to start LinkedIn scrape: {e}")
+            messages.error(request, f"Failed to save contact: {e}")
         return redirect("admin-neo4j-imports")
 
     def _handle_file_preview(self, request):

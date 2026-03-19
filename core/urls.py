@@ -4,7 +4,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-from integrations.apify.webhook import ApifyWebhookView
+# from integrations.apify.webhook import ApifyWebhookView  # Apify disabled
 from integrations.external.webhook import ExternalContactWebhookView
 from core.admin_views import (
     BusinessDetailView,
@@ -12,6 +12,7 @@ from core.admin_views import (
     ContactListView,
     GraphExplorerView,
     GraphSnapshotAPIView,
+    ImportLinkedInScrapeAPIView,
     ImportListView,
     LeadListView,
     PeopleListView,
@@ -37,6 +38,7 @@ urlpatterns = [
     path("admin/neo4j/pipeline/api/leads/", PipelineLeadsAPIView.as_view(), name="admin-neo4j-pipeline-leads"),
     path("admin/neo4j/pipeline/api/stage/", PipelineStageUpdateView.as_view(), name="admin-neo4j-pipeline-stage"),
     path("admin/neo4j/imports/", ImportListView.as_view(), name="admin-neo4j-imports"),
+    path("admin/neo4j/imports/api/scrape-linkedin/", ImportLinkedInScrapeAPIView.as_view(), name="admin-neo4j-scrape-linkedin"),
     path("admin/neo4j/graph/", GraphExplorerView.as_view(), name="admin-neo4j-graph"),
     path("admin/neo4j/graph/api/", GraphSnapshotAPIView.as_view(), name="admin-neo4j-graph-api"),
     # Django admin
@@ -45,6 +47,6 @@ urlpatterns = [
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/", include("core.api.urls")),
-    path("api/apify/webhook/", ApifyWebhookView.as_view(), name="apify-webhook"),
+    # path("api/apify/webhook/", ApifyWebhookView.as_view(), name="apify-webhook"),  # Apify disabled
     path("api/external/contacts/", ExternalContactWebhookView.as_view(), name="external-contacts-webhook"),
 ]
