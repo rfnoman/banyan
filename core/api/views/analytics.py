@@ -22,34 +22,38 @@ class AnalyticsEventsView(APIView):
 
 
 def _query_recent_events(limit: int) -> list:
-    try:
-        from clickhouse_driver import Client
-        client = Client(
-            host=settings.CLICKHOUSE_HOST,
-            port=settings.CLICKHOUSE_PORT,
-            database=settings.CLICKHOUSE_DB,
-            user=settings.CLICKHOUSE_USER,
-            password=settings.CLICKHOUSE_PASSWORD,
-        )
-        rows = client.execute(
-            f"""
-            SELECT person_id, event_type, source_app, score, stage, timestamp
-            FROM lead_events
-            ORDER BY timestamp DESC
-            LIMIT {limit}
-            """
-        )
-        return [
-            {
-                "person_id": r[0],
-                "event_type": r[1],
-                "source_app": r[2],
-                "score": r[3],
-                "stage": r[4],
-                "timestamp": r[5].isoformat() if hasattr(r[5], "isoformat") else str(r[5]),
-            }
-            for r in rows
-        ]
-    except Exception as exc:
-        logger.warning("ClickHouse events query failed: %s", exc)
-        return []
+    """Stub — ClickHouse integration disabled. Returns empty list."""
+    # TODO: re-enable ClickHouse integration
+    # try:
+    #     from clickhouse_driver import Client
+    #     client = Client(
+    #         host=settings.CLICKHOUSE_HOST,
+    #         port=settings.CLICKHOUSE_PORT,
+    #         database=settings.CLICKHOUSE_DB,
+    #         user=settings.CLICKHOUSE_USER,
+    #         password=settings.CLICKHOUSE_PASSWORD,
+    #     )
+    #     rows = client.execute(
+    #         f"""
+    #         SELECT person_id, event_type, source_app, score, stage, timestamp
+    #         FROM lead_events
+    #         ORDER BY timestamp DESC
+    #         LIMIT {limit}
+    #         """
+    #     )
+    #     return [
+    #         {
+    #             "person_id": r[0],
+    #             "event_type": r[1],
+    #             "source_app": r[2],
+    #             "score": r[3],
+    #             "stage": r[4],
+    #             "timestamp": r[5].isoformat() if hasattr(r[5], "isoformat") else str(r[5]),
+    #         }
+    #         for r in rows
+    #     ]
+    # except Exception as exc:
+    #     logger.warning("ClickHouse events query failed: %s", exc)
+    #     return []
+    logger.debug("ClickHouse disabled — returning empty events list")
+    return []

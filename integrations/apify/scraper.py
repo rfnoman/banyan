@@ -1,49 +1,71 @@
+"""LinkedIn profile scraper using the open-source linkedin-api package."""
 import logging
 import os
-import requests
+import re
 
 logger = logging.getLogger(__name__)
 
-APIFY_API_TOKEN = os.environ.get("APIFY_API_TOKEN", "")
-LINKEDIN_SCRAPER_ACTOR = "apify/linkedin-profile-scraper"
+LINKEDIN_EMAIL = os.environ.get("LINKEDIN_EMAIL", "")
+LINKEDIN_PASSWORD = os.environ.get("LINKEDIN_PASSWORD", "")
 
 
-class ApifyScraper:
-    def __init__(self, token: str = None):
-        self.token = token or APIFY_API_TOKEN
-        self.base_url = "https://api.apify.com/v2"
+def _extract_vanity_name(linkedin_url: str) -> str:
+    """Extract the vanity name (public identifier) from a LinkedIn profile URL.
 
-    def start_linkedin_scrape(self, search_url: str, product: str, webhook_url: str = None) -> str:
-        if not self.token:
-            raise ValueError("APIFY_API_TOKEN not set")
+    Handles URLs like:
+        https://www.linkedin.com/in/johndoe
+        https://linkedin.com/in/johndoe/
+        linkedin.com/in/johndoe?param=value
+    """
+    match = re.search(r"linkedin\.com/in/([^/?#]+)", linkedin_url)
+    if not match:
+        raise ValueError(f"Could not extract profile ID from URL: {linkedin_url}")
+    return match.group(1).strip("/")
 
-        payload = {
-            "startUrls": [{"url": search_url}],
-            "proxy": {"useApifyProxy": True},
-        }
-        if webhook_url:
-            payload["webhooks"] = [{
-                "eventTypes": ["ACTOR.RUN.SUCCEEDED"],
-                "requestUrl": webhook_url,
-                "payloadTemplate": f'{{"product": "{product}", "items": {{{{resource.defaultDatasetId}}}}}}',
-            }]
 
-        response = requests.post(
-            f"{self.base_url}/acts/{LINKEDIN_SCRAPER_ACTOR}/runs",
-            params={"token": self.token},
-            json=payload,
-            timeout=30,
-        )
-        response.raise_for_status()
-        run_id = response.json()["data"]["id"]
-        logger.info("Apify LinkedIn scrape started: run_id=%s product=%s", run_id, product)
-        return run_id
+class LinkedInScraper:
+    """Scrapes LinkedIn profiles using linkedin-api (requires LinkedIn credentials)."""
 
-    def fetch_dataset(self, dataset_id: str) -> list:
-        response = requests.get(
-            f"{self.base_url}/datasets/{dataset_id}/items",
-            params={"token": self.token, "format": "json"},
-            timeout=30,
-        )
-        response.raise_for_status()
-        return response.json()
+    def __init__(self, email: str = None, password: str = None):
+        self.email = email or LINKEDIN_EMAIL
+        self.password = password or LINKEDIN_PASSWORD
+        self._api = None
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(self.email and self.password)
+
+    def _get_api(self):
+        """Lazily initialize the LinkedIn API client."""
+        if self._api is None:
+            if not self.is_configured:
+                raise ValueError(
+                    "LinkedIn credentials not configured. "
+                    "Set LINKEDIN_EMAIL and LINKEDIN_PASSWORD environment variables."
+                )
+            from linkedin_api import Linkedin
+            self._api = Linkedin(self.email, self.password)
+        return self._api
+
+    def scrape_profile(self, linkedin_url: str) -> dict:
+        """Scrape a single LinkedIn profile by URL.
+
+        Returns a dict with profile data and contact info merged together.
+        """
+        vanity_name = _extract_vanity_name(linkedin_url)
+        api = self._get_api()
+
+        logger.info("Scraping LinkedIn profile: %s", vanity_name)
+
+        profile = api.get_profile(vanity_name)
+        try:
+            contact_info = api.get_profile_contact_info(vanity_name)
+        except Exception as exc:
+            logger.warning("Could not fetch contact info for %s: %s", vanity_name, exc)
+            contact_info = {}
+
+        # Merge contact info into profile dict for downstream processing
+        profile["_contact_info"] = contact_info
+        profile["_linkedin_url"] = linkedin_url
+
+        return profile

@@ -49,28 +49,31 @@ def _compute_initial_score(event: LeadCreatedEvent) -> float:
 
 
 def _write_to_clickhouse(person_id: str, event_type: str, source_app: str, score: float, stage: str):
-    try:
-        from clickhouse_driver import Client
-        client = Client(
-            host=settings.CLICKHOUSE_HOST,
-            port=settings.CLICKHOUSE_PORT,
-            database=settings.CLICKHOUSE_DB,
-            user=settings.CLICKHOUSE_USER,
-            password=settings.CLICKHOUSE_PASSWORD,
-        )
-        client.execute(
-            "INSERT INTO lead_events (person_id, event_type, source_app, score, stage, timestamp) VALUES",
-            [{
-                "person_id": person_id,
-                "event_type": event_type,
-                "source_app": source_app,
-                "score": score,
-                "stage": stage,
-                "timestamp": datetime.now(timezone.utc),
-            }],
-        )
-    except Exception as exc:
-        logger.warning("ClickHouse write failed (non-fatal): %s", exc)
+    """Stub — ClickHouse integration disabled. Uncomment to re-enable."""
+    # TODO: re-enable ClickHouse integration
+    # try:
+    #     from clickhouse_driver import Client
+    #     client = Client(
+    #         host=settings.CLICKHOUSE_HOST,
+    #         port=settings.CLICKHOUSE_PORT,
+    #         database=settings.CLICKHOUSE_DB,
+    #         user=settings.CLICKHOUSE_USER,
+    #         password=settings.CLICKHOUSE_PASSWORD,
+    #     )
+    #     client.execute(
+    #         "INSERT INTO lead_events (person_id, event_type, source_app, score, stage, timestamp) VALUES",
+    #         [{
+    #             "person_id": person_id,
+    #             "event_type": event_type,
+    #             "source_app": source_app,
+    #             "score": score,
+    #             "stage": stage,
+    #             "timestamp": datetime.now(timezone.utc),
+    #         }],
+    #     )
+    # except Exception as exc:
+    #     logger.warning("ClickHouse write failed (non-fatal): %s", exc)
+    logger.debug("ClickHouse disabled — skipping write for person_id=%s", person_id)
 
 
 @shared_task(queue="default", bind=True, max_retries=3, autoretry_for=(Exception,), retry_backoff=True)

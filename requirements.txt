@@ -20,7 +20,7 @@ pika
 # Databases
 neo4j-driver
 psycopg2-binary
-clickhouse-driver
+# clickhouse-driver  # disabled — uncomment when ready to integrate
 
 # LLM
 anthropic
@@ -31,9 +31,15 @@ pydantic
 # Static files
 whitenoise
 
+# Production logging
+python-json-logger
+
 # Utils
 python-dotenv
 openpyxl
+
+# LinkedIn scraping
+linkedin-api
 
 # Debug / Dev
 django-extensions

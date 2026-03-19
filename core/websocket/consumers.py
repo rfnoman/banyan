@@ -39,37 +39,40 @@ class CRMConsumer(AsyncWebsocketConsumer):
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     async def _get_recent_events(self) -> list:
-        try:
-            from asgiref.sync import sync_to_async
-            from django.conf import settings
-            from clickhouse_driver import Client
-
-            def _fetch():
-                client = Client(
-                    host=settings.CLICKHOUSE_HOST,
-                    port=settings.CLICKHOUSE_PORT,
-                    database=settings.CLICKHOUSE_DB,
-                    user=settings.CLICKHOUSE_USER,
-                    password=settings.CLICKHOUSE_PASSWORD,
-                )
-                rows = client.execute(
-                    "SELECT person_id, event_type, source_app, score, stage, timestamp "
-                    "FROM lead_events ORDER BY timestamp DESC LIMIT 10"
-                )
-                return [
-                    {
-                        "type": "new_lead",
-                        "person_id": r[0],
-                        "event_type": r[1],
-                        "source_app": r[2],
-                        "score": r[3],
-                        "stage": r[4],
-                        "timestamp": r[5].isoformat() if hasattr(r[5], "isoformat") else str(r[5]),
-                    }
-                    for r in rows
-                ]
-
-            return await sync_to_async(_fetch)()
-        except Exception as exc:
-            logger.warning("Could not fetch recent events for WS: %s", exc)
-            return []
+        """Stub — ClickHouse integration disabled. Returns empty list."""
+        # TODO: re-enable ClickHouse integration
+        # try:
+        #     from asgiref.sync import sync_to_async
+        #     from django.conf import settings
+        #     from clickhouse_driver import Client
+        #
+        #     def _fetch():
+        #         client = Client(
+        #             host=settings.CLICKHOUSE_HOST,
+        #             port=settings.CLICKHOUSE_PORT,
+        #             database=settings.CLICKHOUSE_DB,
+        #             user=settings.CLICKHOUSE_USER,
+        #             password=settings.CLICKHOUSE_PASSWORD,
+        #         )
+        #         rows = client.execute(
+        #             "SELECT person_id, event_type, source_app, score, stage, timestamp "
+        #             "FROM lead_events ORDER BY timestamp DESC LIMIT 10"
+        #         )
+        #         return [
+        #             {
+        #                 "type": "new_lead",
+        #                 "person_id": r[0],
+        #                 "event_type": r[1],
+        #                 "source_app": r[2],
+        #                 "score": r[3],
+        #                 "stage": r[4],
+        #                 "timestamp": r[5].isoformat() if hasattr(r[5], "isoformat") else str(r[5]),
+        #             }
+        #             for r in rows
+        #         ]
+        #
+        #     return await sync_to_async(_fetch)()
+        # except Exception as exc:
+        #     logger.warning("Could not fetch recent events for WS: %s", exc)
+        #     return []
+        return []

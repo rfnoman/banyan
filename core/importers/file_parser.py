@@ -111,7 +111,7 @@ def parse_import_file(file_obj, filename: str) -> tuple[list[dict], list[str]]:
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext == "csv":
         return parse_csv(file_obj)
-    elif ext in ("xlsx", "xls"):
+    elif ext == "xlsx":
         return parse_xlsx(file_obj)
     else:
         return [], [f"Unsupported file format: '.{ext}'. Please upload a .csv or .xlsx file."]

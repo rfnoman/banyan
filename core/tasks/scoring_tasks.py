@@ -21,29 +21,33 @@ ACTION_WEIGHTS = {
 
 
 def _query_clickhouse_actions(person_id: str) -> list:
-    try:
-        from clickhouse_driver import Client
-        client = Client(
-            host=settings.CLICKHOUSE_HOST,
-            port=settings.CLICKHOUSE_PORT,
-            database=settings.CLICKHOUSE_DB,
-            user=settings.CLICKHOUSE_USER,
-            password=settings.CLICKHOUSE_PASSWORD,
-        )
-        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-        rows = client.execute(
-            """
-            SELECT event_type, score, stage, timestamp
-            FROM lead_events
-            WHERE person_id = %(person_id)s AND timestamp >= %(cutoff)s
-            ORDER BY timestamp DESC
-            """,
-            {"person_id": person_id, "cutoff": cutoff},
-        )
-        return rows
-    except Exception as exc:
-        logger.warning("ClickHouse query failed: %s", exc)
-        return []
+    """Stub — ClickHouse integration disabled. Returns empty list."""
+    # TODO: re-enable ClickHouse integration
+    # try:
+    #     from clickhouse_driver import Client
+    #     client = Client(
+    #         host=settings.CLICKHOUSE_HOST,
+    #         port=settings.CLICKHOUSE_PORT,
+    #         database=settings.CLICKHOUSE_DB,
+    #         user=settings.CLICKHOUSE_USER,
+    #         password=settings.CLICKHOUSE_PASSWORD,
+    #     )
+    #     cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+    #     rows = client.execute(
+    #         """
+    #         SELECT event_type, score, stage, timestamp
+    #         FROM lead_events
+    #         WHERE person_id = %(person_id)s AND timestamp >= %(cutoff)s
+    #         ORDER BY timestamp DESC
+    #         """,
+    #         {"person_id": person_id, "cutoff": cutoff},
+    #     )
+    #     return rows
+    # except Exception as exc:
+    #     logger.warning("ClickHouse query failed: %s", exc)
+    #     return []
+    logger.debug("ClickHouse disabled — returning empty actions for person_id=%s", person_id)
+    return []
 
 
 @shared_task(queue="default", bind=True, max_retries=3, autoretry_for=(Exception,), retry_backoff=True)

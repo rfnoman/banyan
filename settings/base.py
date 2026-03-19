@@ -163,15 +163,20 @@ TEMPLATES = [
 WSGI_APPLICATION = "core.wsgi.application"
 ASGI_APPLICATION = "core.asgi.application"
 
-# PostgreSQL — Django auth only
+# PostgreSQL — primary CRM store + auth
+_db_options = {}
+if os.environ.get("DATABASE_SSLMODE"):
+    _db_options["sslmode"] = os.environ["DATABASE_SSLMODE"]
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("POSTGRES_DB", "graphcrm"),
+        "NAME": os.environ.get("POSTGRES_DB", "banyan"),
         "USER": os.environ.get("POSTGRES_USER", "postgres"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "postgres"),
         "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
         "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        "OPTIONS": _db_options,
     }
 }
 
@@ -180,12 +185,12 @@ NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
 NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "password")
 
-# ClickHouse
-CLICKHOUSE_HOST = os.environ.get("CLICKHOUSE_HOST", "localhost")
-CLICKHOUSE_PORT = int(os.environ.get("CLICKHOUSE_PORT", "9000"))
-CLICKHOUSE_DB = os.environ.get("CLICKHOUSE_DB", "default")
-CLICKHOUSE_USER = os.environ.get("CLICKHOUSE_USER", "default")
-CLICKHOUSE_PASSWORD = os.environ.get("CLICKHOUSE_PASSWORD", "")
+# ClickHouse (disabled — uncomment when ready to integrate)
+# CLICKHOUSE_HOST = os.environ.get("CLICKHOUSE_HOST", "localhost")
+# CLICKHOUSE_PORT = int(os.environ.get("CLICKHOUSE_PORT", "9000"))
+# CLICKHOUSE_DB = os.environ.get("CLICKHOUSE_DB", "default")
+# CLICKHOUSE_USER = os.environ.get("CLICKHOUSE_USER", "default")
+# CLICKHOUSE_PASSWORD = os.environ.get("CLICKHOUSE_PASSWORD", "")
 
 # RabbitMQ
 RABBITMQ_URL = os.environ.get("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
