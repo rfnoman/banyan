@@ -30,7 +30,7 @@
                 <span class="material-symbols-outlined text-primary-500 mr-1 align-middle">business</span>
                 Business Information
             </h3>
-            <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <dl class="grid grid-cols-1 gap-4">
                 <div>
                     <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Name</dt>
                     <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ business.name|default:"—" }}</dd>
@@ -315,7 +315,7 @@
                 <div x-show="filtered.length === 0" class="px-3 py-2 text-sm text-base-500">No matching products. Type to create a new one.</div>
             </div>
         </div>
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 gap-4">
             <div>
                 <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Stage</label>
                 <select id="modal-stage"

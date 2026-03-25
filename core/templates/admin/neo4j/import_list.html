@@ -16,7 +16,7 @@
 {% endif %}
 
 <!-- ==================== IMPORT ACTIONS ==================== -->
-<div class="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
+<div class="grid grid-cols-1 gap-6 mb-6">
 
     <!-- LinkedIn Import Card -->
     <div class="rounded-lg border border-base-200 bg-white p-5 shadow-sm dark:border-base-700 dark:bg-base-900"
@@ -141,7 +141,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="action" value="linkedin_save">
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Name *</label>
                         <input type="text" name="name" x-model="name" required
@@ -162,7 +162,7 @@
                            class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Company</label>
                         <input type="text" name="company_name" x-model="companyName"
@@ -175,7 +175,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Location</label>
                         <input type="text" name="location" x-model="location"
@@ -567,7 +567,7 @@ Jane Smith,jane@example.com,VP Sales,,London,</pre>
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 gap-3">
             <div>
                 <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Stage</label>
                 <select name="stage"

@@ -29,7 +29,7 @@
                 <span class="material-symbols-outlined text-primary-500 mr-1 align-middle">inventory_2</span>
                 Product Information
             </h3>
-            <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <dl class="grid grid-cols-1 gap-4">
                 <div>
                     <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Name</dt>
                     <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ product.name|default:"—" }}</dd>
@@ -45,7 +45,7 @@
                         {% else %}—{% endif %}
                     </dd>
                 </div>
-                <div class="sm:col-span-2">
+                <div>
                     <dt class="text-xs font-medium text-base-500 uppercase tracking-wide">Description</dt>
                     <dd class="mt-1 text-sm text-base-900 dark:text-white">{{ product.description|default:"—" }}</dd>
                 </div>
