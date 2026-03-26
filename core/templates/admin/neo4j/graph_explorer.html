@@ -6,10 +6,13 @@
 
 {% block extrahead %}
 {{ block.super }}
+<script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
     #graph-container {
         width: 100%;
-        height: 600px;
+        height: calc(100vh - 280px);
+        min-height: 500px;
+        max-height: 900px;
         border: 1px solid var(--border-color, #e5e7eb);
         border-radius: 0.5rem;
         background: #fafafa;
@@ -18,7 +21,20 @@
     }
     .dark #graph-container { background: #1a1a2e; }
 
-    #graph-canvas { width: 100%; height: 100%; }
+    #graph-svg { width: 100%; height: 100%; }
+
+    .link { stroke: #d1d5db; stroke-width: 1; stroke-opacity: 0.6; }
+    .dark .link { stroke: #4b5563; }
+
+    .link-label { font-size: 9px; fill: #9ca3af; pointer-events: none; user-select: none; }
+    .dark .link-label { fill: #6b7280; }
+
+    .node { cursor: pointer; stroke: #fff; stroke-width: 1.5; }
+    .node:hover { stroke-width: 3; filter: drop-shadow(0 0 4px rgba(0,0,0,0.3)); }
+    .dark .node { stroke: #374151; }
+
+    .node-label { font-size: 10px; text-anchor: middle; pointer-events: none; fill: #374151; user-select: none; }
+    .dark .node-label { fill: #e5e7eb; }
 
     .graph-legend {
         position: absolute;
@@ -65,7 +81,7 @@
 
 {% block content %}
 <div id="graph-container">
-    <canvas id="graph-canvas"></canvas>
+    <svg id="graph-svg"></svg>
     <div class="graph-legend">
         <div class="legend-item"><span class="legend-dot" style="background: #3b82f6;"></span> Person</div>
         <div class="legend-item"><span class="legend-dot" style="background: #10b981;"></span> Business</div>
@@ -89,32 +105,34 @@
 <script>
 const COLORS = { Person: '#3b82f6', Business: '#10b981', Product: '#f59e0b', Unknown: '#9ca3af' };
 const RADIUS = { Person: 8, Business: 10, Product: 6 };
+const DETAIL_URLS = {
+    Person: id => `/admin/neo4j/people/${id}/`,
+    Business: id => `/admin/neo4j/businesses/${id}/`,
+    Product: id => `/admin/neo4j/products/${id}/`,
+};
 
-let nodes = [], edges = [], simulation = null;
-let canvas, ctx, width, height;
-let transform = { x: 0, y: 0, k: 1 };
-let dragging = null, dragStart = null, panStart = null;
+let simulation = null;
+let zoomBehavior = null;
+let currentTransform = d3.zoomIdentity;
 
 function loadGraph() {
     document.getElementById('graph-stats').textContent = 'Loading...';
     fetch('/admin/neo4j/graph/api/')
         .then(r => r.json())
         .then(data => {
-            nodes = data.nodes.map(n => ({
+            const nodes = data.nodes.map(n => ({
                 ...n,
-                x: Math.random() * 600 + 100,
-                y: Math.random() * 400 + 100,
-                vx: 0, vy: 0,
                 radius: RADIUS[n.label] || 6,
                 color: COLORS[n.label] || COLORS.Unknown,
             }));
-            const nodeMap = {};
-            nodes.forEach(n => nodeMap[n.id] = n);
-            edges = data.edges.filter(e => nodeMap[e.source] && nodeMap[e.target])
-                             .map(e => ({ source: nodeMap[e.source], target: nodeMap[e.target], type: e.type }));
+            const nodeIds = new Set(nodes.map(n => n.id));
+            const links = data.edges
+                .filter(e => nodeIds.has(e.source) && nodeIds.has(e.target))
+                .map(e => ({ source: e.source, target: e.target, type: e.type }));
+
             document.getElementById('graph-stats').textContent =
-                `${nodes.length} nodes, ${edges.length} edges`;
-            startSimulation();
+                `${nodes.length} nodes, ${links.length} edges`;
+            renderGraph(nodes, links);
         })
         .catch(err => {
             document.getElementById('graph-stats').textContent = 'Error loading graph';
@@ -122,158 +140,154 @@ function loadGraph() {
         });
 }
 
-function startSimulation() {
-    let iterations = 0;
-    const maxIterations = 300;
-    const alpha = 0.3;
+function renderGraph(nodes, links) {
+    const svg = d3.select('#graph-svg');
+    svg.selectAll('*').remove();
 
-    function tick() {
-        if (iterations >= maxIterations) { draw(); return; }
-        iterations++;
+    const container = document.getElementById('graph-container');
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    svg.attr('viewBox', [0, 0, width, height]);
 
-        // Repulsion
-        for (let i = 0; i < nodes.length; i++) {
-            for (let j = i + 1; j < nodes.length; j++) {
-                let dx = nodes[j].x - nodes[i].x;
-                let dy = nodes[j].y - nodes[i].y;
-                let d = Math.sqrt(dx * dx + dy * dy) || 1;
-                let force = 1000 / (d * d);
-                let fx = dx / d * force;
-                let fy = dy / d * force;
-                nodes[i].vx -= fx; nodes[i].vy -= fy;
-                nodes[j].vx += fx; nodes[j].vy += fy;
-            }
-        }
-
-        // Attraction (edges)
-        edges.forEach(e => {
-            let dx = e.target.x - e.source.x;
-            let dy = e.target.y - e.source.y;
-            let d = Math.sqrt(dx * dx + dy * dy) || 1;
-            let force = (d - 80) * 0.01;
-            let fx = dx / d * force;
-            let fy = dy / d * force;
-            e.source.vx += fx; e.source.vy += fy;
-            e.target.vx -= fx; e.target.vy -= fy;
+    // Zoom container
+    const g = svg.append('g');
+    zoomBehavior = d3.zoom()
+        .scaleExtent([0.1, 4])
+        .on('zoom', event => {
+            currentTransform = event.transform;
+            g.attr('transform', event.transform);
+            // Show/hide edge labels based on zoom level
+            g.selectAll('.link-label').attr('opacity', event.transform.k > 1.5 ? 1 : 0);
         });
+    svg.call(zoomBehavior);
 
-        // Center gravity
-        nodes.forEach(n => {
-            n.vx += (width / 2 - n.x) * 0.001;
-            n.vy += (height / 2 - n.y) * 0.001;
-            n.x += n.vx * alpha;
-            n.y += n.vy * alpha;
-            n.vx *= 0.9; n.vy *= 0.9;
-        });
+    // Arrowhead markers
+    const markerTypes = ['WORKS_AT', 'IS_LEAD_FOR', 'HAS_ACTION', 'REFERRED_FROM'];
+    svg.append('defs').selectAll('marker')
+        .data(markerTypes)
+        .join('marker')
+        .attr('id', d => `arrow-${d}`)
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', 20)
+        .attr('refY', 0)
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .append('path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', '#9ca3af');
 
-        draw();
-        requestAnimationFrame(tick);
-    }
-    tick();
-}
-
-function draw() {
-    ctx.clearRect(0, 0, width, height);
-    ctx.save();
-    ctx.translate(transform.x, transform.y);
-    ctx.scale(transform.k, transform.k);
+    // Force simulation
+    if (simulation) simulation.stop();
+    simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+        .force('charge', d3.forceManyBody().strength(-300))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(d => d.radius + 5));
 
     // Edges
-    ctx.strokeStyle = '#d1d5db';
-    ctx.lineWidth = 0.5;
-    edges.forEach(e => {
-        ctx.beginPath();
-        ctx.moveTo(e.source.x, e.source.y);
-        ctx.lineTo(e.target.x, e.target.y);
-        ctx.stroke();
-    });
+    const link = g.append('g').selectAll('line')
+        .data(links)
+        .join('line')
+        .attr('class', 'link')
+        .attr('marker-end', d => `url(#arrow-${d.type})`);
+
+    // Edge labels (hidden by default, shown at zoom > 1.5x)
+    const linkLabel = g.append('g').selectAll('text')
+        .data(links)
+        .join('text')
+        .attr('class', 'link-label')
+        .attr('text-anchor', 'middle')
+        .attr('opacity', 0)
+        .text(d => d.type.replace(/_/g, ' '));
 
     // Nodes
-    nodes.forEach(n => {
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
-        ctx.fillStyle = n.color;
-        ctx.fill();
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
+    let dragDistance = 0;
+    const drag = d3.drag()
+        .on('start', (event, d) => {
+            dragDistance = 0;
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x; d.fy = d.y;
+        })
+        .on('drag', (event, d) => {
+            dragDistance += Math.abs(event.dx) + Math.abs(event.dy);
+            d.fx = event.x; d.fy = event.y;
+        })
+        .on('end', (event, d) => {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null; d.fy = null;
+        });
+
+    const node = g.append('g').selectAll('circle')
+        .data(nodes)
+        .join('circle')
+        .attr('class', 'node')
+        .attr('r', d => d.radius)
+        .attr('fill', d => d.color)
+        .on('click', (event, d) => {
+            if (dragDistance > 3) return;
+            const urlFn = DETAIL_URLS[d.label];
+            if (urlFn && d.id) window.location.href = urlFn(d.id);
+        })
+        .on('mouseenter', (event, d) => {
+            const tooltip = document.getElementById('node-tooltip');
+            tooltip.style.display = 'block';
+            tooltip.innerHTML = `<strong>${d.name || d.id}</strong><br>
+                Type: ${d.label}<br>
+                ${d.email ? 'Email: ' + d.email + '<br>' : ''}
+                ${d.title ? 'Title: ' + d.title : ''}`;
+        })
+        .on('mousemove', event => {
+            const rect = container.getBoundingClientRect();
+            const tooltip = document.getElementById('node-tooltip');
+            tooltip.style.left = (event.clientX - rect.left + 12) + 'px';
+            tooltip.style.top = (event.clientY - rect.top - 10) + 'px';
+        })
+        .on('mouseleave', () => {
+            document.getElementById('node-tooltip').style.display = 'none';
+        })
+        .call(drag);
+
+    // Node labels
+    const nodeLabel = g.append('g').selectAll('text')
+        .data(nodes)
+        .join('text')
+        .attr('class', 'node-label')
+        .text(d => (d.name || d.email || d.id || '').substring(0, 15));
+
+    // Tick
+    simulation.on('tick', () => {
+        link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+
+        linkLabel
+            .attr('x', d => (d.source.x + d.target.x) / 2)
+            .attr('y', d => (d.source.y + d.target.y) / 2);
+
+        node.attr('cx', d => d.x).attr('cy', d => d.y);
+
+        nodeLabel
+            .attr('x', d => d.x)
+            .attr('y', d => d.y + d.radius + 14);
     });
 
-    // Labels
-    ctx.fillStyle = '#374151';
-    ctx.font = '9px sans-serif';
-    ctx.textAlign = 'center';
-    nodes.forEach(n => {
-        const label = n.name || n.email || n.id;
-        if (label) ctx.fillText(label.substring(0, 15), n.x, n.y + n.radius + 12);
-    });
-
-    ctx.restore();
+    // Responsive resize
+    new ResizeObserver(() => {
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        svg.attr('viewBox', [0, 0, w, h]);
+        simulation.force('center', d3.forceCenter(w / 2, h / 2));
+        simulation.alpha(0.1).restart();
+    }).observe(container);
 }
 
 function resetView() {
-    transform = { x: 0, y: 0, k: 1 };
-    draw();
+    const svg = d3.select('#graph-svg');
+    if (zoomBehavior) {
+        svg.transition().duration(500).call(zoomBehavior.transform, d3.zoomIdentity);
+    }
 }
 
-function init() {
-    canvas = document.getElementById('graph-canvas');
-    const container = document.getElementById('graph-container');
-    width = container.clientWidth;
-    height = container.clientHeight;
-    canvas.width = width;
-    canvas.height = height;
-    ctx = canvas.getContext('2d');
-
-    // Pan & zoom
-    canvas.addEventListener('wheel', e => {
-        e.preventDefault();
-        const scale = e.deltaY > 0 ? 0.9 : 1.1;
-        transform.k *= scale;
-        transform.x = e.offsetX - (e.offsetX - transform.x) * scale;
-        transform.y = e.offsetY - (e.offsetY - transform.y) * scale;
-        draw();
-    });
-
-    canvas.addEventListener('mousedown', e => {
-        panStart = { x: e.offsetX - transform.x, y: e.offsetY - transform.y };
-    });
-    canvas.addEventListener('mousemove', e => {
-        if (panStart) {
-            transform.x = e.offsetX - panStart.x;
-            transform.y = e.offsetY - panStart.y;
-            draw();
-        }
-        // Tooltip
-        const mx = (e.offsetX - transform.x) / transform.k;
-        const my = (e.offsetY - transform.y) / transform.k;
-        const tooltip = document.getElementById('node-tooltip');
-        let found = null;
-        for (const n of nodes) {
-            const dx = mx - n.x, dy = my - n.y;
-            if (Math.sqrt(dx*dx + dy*dy) < n.radius + 3) { found = n; break; }
-        }
-        if (found) {
-            tooltip.style.display = 'block';
-            tooltip.style.left = (e.offsetX + 12) + 'px';
-            tooltip.style.top = (e.offsetY - 10) + 'px';
-            tooltip.innerHTML = `<strong>${found.name || found.id}</strong><br>
-                Type: ${found.label}<br>
-                ${found.email ? 'Email: ' + found.email + '<br>' : ''}
-                ${found.title ? 'Title: ' + found.title : ''}`;
-        } else {
-            tooltip.style.display = 'none';
-        }
-    });
-    canvas.addEventListener('mouseup', () => { panStart = null; });
-    canvas.addEventListener('mouseleave', () => {
-        panStart = null;
-        document.getElementById('node-tooltip').style.display = 'none';
-    });
-
-    loadGraph();
-}
-
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', loadGraph);
 </script>
 {% endblock %}

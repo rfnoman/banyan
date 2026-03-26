@@ -42,7 +42,11 @@ from core.db.queries import (
     get_person_with_connections,
     get_product_with_leads,
     link_person_to_business,
+    unlink_person_from_business,
+    update_business,
+    update_contact,
     update_lead_stage,
+    update_person,
     update_product,
     IMPORT_SOURCES,
 )
@@ -151,6 +155,24 @@ class PersonDetailView(Neo4jAdminMixin, View):
     def post(self, request, person_id):
         action = request.POST.get("action", "")
 
+        if action == "edit_person":
+            data = {
+                "name": request.POST.get("name", "").strip(),
+                "email": request.POST.get("email", "").strip(),
+                "title": request.POST.get("title", "").strip() or None,
+                "linkedin_url": request.POST.get("linkedin_url", "").strip() or None,
+                "location": request.POST.get("location", "").strip() or None,
+            }
+            if not data["name"] or not data["email"]:
+                messages.error(request, "Name and email are required.")
+                return redirect("admin-neo4j-person-detail", person_id=person_id)
+            try:
+                update_person(person_id, data)
+                messages.success(request, "Person updated successfully.")
+            except Exception as e:
+                messages.error(request, f"Failed to update person: {e}")
+            return redirect("admin-neo4j-person-detail", person_id=person_id)
+
         if action == "link_business":
             business_id = request.POST.get("business_id", "").strip()
             if not business_id:
@@ -163,6 +185,14 @@ class PersonDetailView(Neo4jAdminMixin, View):
                 messages.success(request, f"Successfully linked to \"{biz_name}\".")
             except Exception as e:
                 messages.error(request, f"Failed to link to business: {e}")
+            return redirect("admin-neo4j-person-detail", person_id=person_id)
+
+        if action == "unlink_business":
+            try:
+                unlink_person_from_business(person_id)
+                messages.success(request, "Successfully unlinked from business.")
+            except Exception as e:
+                messages.error(request, f"Failed to unlink from business: {e}")
             return redirect("admin-neo4j-person-detail", person_id=person_id)
 
         # Default: convert to lead
@@ -299,6 +329,24 @@ class BusinessDetailView(Neo4jAdminMixin, View):
     def post(self, request, business_id):
         action = request.POST.get("action", "")
 
+        if action == "edit_business":
+            data = {
+                "name": request.POST.get("name", "").strip(),
+                "industry": request.POST.get("industry", "").strip() or None,
+                "size": request.POST.get("size", "").strip() or None,
+                "website": request.POST.get("website", "").strip() or None,
+                "location": request.POST.get("location", "").strip() or None,
+            }
+            if not data["name"]:
+                messages.error(request, "Business name is required.")
+                return redirect("admin-neo4j-business-detail", business_id=business_id)
+            try:
+                update_business(business_id, data)
+                messages.success(request, "Business updated successfully.")
+            except Exception as e:
+                messages.error(request, f"Failed to update business: {e}")
+            return redirect("admin-neo4j-business-detail", business_id=business_id)
+
         if action == "add_person":
             person_id = request.POST.get("person_id", "").strip()
             if not person_id:
@@ -311,6 +359,20 @@ class BusinessDetailView(Neo4jAdminMixin, View):
                 messages.success(request, f"Successfully linked \"{person_name}\" to this business.")
             except Exception as e:
                 messages.error(request, f"Failed to link person: {e}")
+            return redirect("admin-neo4j-business-detail", business_id=business_id)
+
+        if action == "unlink_person":
+            person_id = request.POST.get("person_id", "").strip()
+            if not person_id:
+                messages.error(request, "Person ID is required.")
+                return redirect("admin-neo4j-business-detail", business_id=business_id)
+            try:
+                unlink_person_from_business(person_id)
+                person = get_person_with_connections(person_id)
+                person_name = person.get("name", person_id) if person else person_id
+                messages.success(request, f"Successfully unlinked \"{person_name}\" from this business.")
+            except Exception as e:
+                messages.error(request, f"Failed to unlink person: {e}")
             return redirect("admin-neo4j-business-detail", business_id=business_id)
 
         # Default: convert to lead
@@ -406,9 +468,13 @@ class ProductDetailView(Neo4jAdminMixin, View):
 
         if action == "edit_product":
             data = {
+                "name": request.POST.get("name", "").strip(),
                 "url": request.POST.get("url", "").strip() or None,
                 "description": request.POST.get("description", "").strip() or None,
             }
+            if not data["name"]:
+                messages.error(request, "Product name is required.")
+                return redirect("admin-neo4j-product-detail", product_id=product_id)
             try:
                 update_product(product_id, data)
                 messages.success(request, "Product updated successfully.")
@@ -477,7 +543,9 @@ class ContactListView(Neo4jAdminMixin, View):
     def post(self, request):
         action = request.POST.get("action", "")
 
-        if action == "classify":
+        if action == "edit_contact":
+            return self._handle_edit_contact(request)
+        elif action == "classify":
             return self._handle_classify(request)
         elif action == "bulk_classify":
             return self._handle_bulk_classify(request)
@@ -489,6 +557,28 @@ class ContactListView(Neo4jAdminMixin, View):
             return self._handle_bulk_dismiss(request)
 
         messages.error(request, "Unknown action.")
+        return redirect("admin-neo4j-contacts")
+
+    def _handle_edit_contact(self, request):
+        contact_id = request.POST.get("contact_id", "").strip()
+        if not contact_id:
+            messages.error(request, "Contact ID is required.")
+            return redirect("admin-neo4j-contacts")
+
+        data = {}
+        for field in ("name", "email", "title", "linkedin_url", "location",
+                       "company_name", "company_industry", "company_size", "company_website"):
+            val = request.POST.get(field, "").strip()
+            data[field] = val or None
+        # Name should not be None
+        if not data.get("name"):
+            messages.error(request, "Name is required.")
+            return redirect("admin-neo4j-contacts")
+        try:
+            update_contact(contact_id, data)
+            messages.success(request, f"Contact \"{data['name']}\" updated successfully.")
+        except Exception as e:
+            messages.error(request, f"Failed to update contact: {e}")
         return redirect("admin-neo4j-contacts")
 
     def _handle_classify(self, request):

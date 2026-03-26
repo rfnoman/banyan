@@ -51,6 +51,29 @@
         this.classifyLocation = location;
         document.getElementById('classify-business-dialog').showModal();
     },
+    editId: '',
+    editName: '',
+    editEmail: '',
+    editTitle: '',
+    editLinkedin: '',
+    editLocation: '',
+    editCompanyName: '',
+    editCompanyIndustry: '',
+    editCompanySize: '',
+    editCompanyWebsite: '',
+    openEdit(id, name, email, title, linkedin, location, companyName, companyIndustry, companySize, companyWebsite) {
+        this.editId = id;
+        this.editName = name;
+        this.editEmail = email;
+        this.editTitle = title;
+        this.editLinkedin = linkedin;
+        this.editLocation = location;
+        this.editCompanyName = companyName;
+        this.editCompanyIndustry = companyIndustry;
+        this.editCompanySize = companySize;
+        this.editCompanyWebsite = companyWebsite;
+        document.getElementById('edit-contact-dialog').showModal();
+    },
 }">
 
 <!-- Filter Bar -->
@@ -206,6 +229,14 @@
                 </td>
                 <td class="px-4 py-3">
                     <div class="flex items-center gap-1">
+                        {% if contact.status == "pending" or contact.status == "classified" %}
+                        <!-- Edit Contact -->
+                        <button type="button" title="Edit Contact"
+                                @click="openEdit('{{ contact.id }}', '{{ contact.name|escapejs }}', '{{ contact.email|default:""|escapejs }}', '{{ contact.title|default:""|escapejs }}', '{{ contact.linkedin_url|default:""|escapejs }}', '{{ contact.location|default:""|escapejs }}', '{{ contact.company_name|default:""|escapejs }}', '{{ contact.company_industry|default:""|escapejs }}', '{{ contact.company_size|default:""|escapejs }}', '{{ contact.company_website|default:""|escapejs }}')"
+                                class="inline-flex items-center rounded px-2 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/30">
+                            <span class="material-symbols-outlined text-sm">edit</span>
+                        </button>
+                        {% endif %}
                         {% if contact.status == "pending" %}
                         <!-- Classify as Person -->
                         <button type="button" title="Classify as Person"
@@ -275,7 +306,7 @@
 {% endif %}
 
 <!-- Convert to Lead Dialog -->
-<dialog id="convert-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:min-w-[400px] sm:max-w-[500px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+<dialog id="convert-dialog" class="rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50" style="width:600px;max-width:calc(100vw - 2rem);margin:auto">
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold text-base-900 dark:text-white">Convert to Lead</h2>
         <button onclick="document.getElementById('convert-dialog').close()"
@@ -331,7 +362,7 @@
 </dialog>
 
 <!-- Classify as Person Dialog -->
-<dialog id="classify-person-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:min-w-[400px] sm:max-w-[500px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+<dialog id="classify-person-dialog" class="rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50" style="width:600px;max-width:calc(100vw - 2rem);margin:auto">
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold text-base-900 dark:text-white">Classify as Person</h2>
         <button onclick="document.getElementById('classify-person-dialog').close()"
@@ -392,8 +423,89 @@
     </form>
 </dialog>
 
+<!-- Edit Contact Dialog -->
+<dialog id="edit-contact-dialog" class="rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50" style="width:600px;max-width:calc(100vw - 2rem);margin:auto">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-base-900 dark:text-white">Edit Contact</h2>
+        <button onclick="document.getElementById('edit-contact-dialog').close()"
+                class="text-base-400 hover:text-base-600 dark:hover:text-base-200">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit_contact">
+        <input type="hidden" name="contact_id" :value="editId">
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Name *</label>
+                <input type="text" name="name" x-model="editName" required
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Email</label>
+                <input type="email" name="email" x-model="editEmail"
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Title</label>
+                <input type="text" name="title" x-model="editTitle"
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Location</label>
+                <input type="text" name="location" x-model="editLocation"
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">LinkedIn URL</label>
+            <input type="text" name="linkedin_url" x-model="editLinkedin"
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+        </div>
+        <hr class="border-base-200 dark:border-base-700">
+        <p class="text-xs font-medium text-base-500 uppercase tracking-wide">Company Information</p>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Company Name</label>
+                <input type="text" name="company_name" x-model="editCompanyName"
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Industry</label>
+                <input type="text" name="company_industry" x-model="editCompanyIndustry"
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Company Size</label>
+                <input type="text" name="company_size" x-model="editCompanySize" placeholder="e.g. 1-10, 11-50"
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Company Website</label>
+                <input type="text" name="company_website" x-model="editCompanyWebsite"
+                       class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
+            </div>
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+            <button type="button" onclick="document.getElementById('edit-contact-dialog').close()"
+                    class="rounded-md border border-base-300 bg-white px-4 py-2 text-sm font-medium text-base-700 hover:bg-base-50 dark:border-base-600 dark:bg-base-700 dark:text-base-200">
+                Cancel
+            </button>
+            <button type="submit"
+                    class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700">
+                Save Changes
+            </button>
+        </div>
+    </form>
+</dialog>
+
 <!-- Classify as Business Dialog -->
-<dialog id="classify-business-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:min-w-[400px] sm:max-w-[500px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+<dialog id="classify-business-dialog" class="rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50" style="width:600px;max-width:calc(100vw - 2rem);margin:auto">
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold text-base-900 dark:text-white">Classify as Business</h2>
         <button onclick="document.getElementById('classify-business-dialog').close()"

@@ -143,7 +143,7 @@
 </div>
 
 <!-- Edit Product Dialog -->
-<dialog id="edit-product-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:min-w-[400px] sm:max-w-[600px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+<dialog id="edit-product-dialog" class="rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50" style="width:600px;max-width:calc(100vw - 2rem);margin:auto">
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold text-base-900 dark:text-white">Edit Product</h2>
         <button onclick="document.getElementById('edit-product-dialog').close()"
@@ -155,10 +155,9 @@
         {% csrf_token %}
         <input type="hidden" name="action" value="edit_product">
         <div>
-            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Name</label>
-            <input type="text" value="{{ product.name }}" disabled
-                   class="w-full rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm text-base-500 dark:border-base-600 dark:bg-base-700 dark:text-base-400 cursor-not-allowed">
-            <p class="mt-1 text-xs text-base-400">Product name cannot be changed after creation.</p>
+            <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">Name *</label>
+            <input type="text" name="name" value="{{ product.name }}" required
+                   class="w-full rounded-md border border-base-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-base-600 dark:bg-base-700 dark:text-white">
         </div>
         <div>
             <label class="block text-sm font-medium text-base-700 dark:text-base-300 mb-1">URL</label>
@@ -184,7 +183,7 @@
 </dialog>
 
 <!-- Delete Product Dialog -->
-<dialog id="delete-product-dialog" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:max-w-[400px] rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50">
+<dialog id="delete-product-dialog" class="rounded-lg bg-white p-6 shadow-xl dark:bg-base-800 backdrop:bg-black/50" style="width:600px;max-width:calc(100vw - 2rem);margin:auto">
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold text-red-700 dark:text-red-400">Delete Product</h2>
         <button onclick="document.getElementById('delete-product-dialog').close()"

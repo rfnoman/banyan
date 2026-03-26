@@ -101,6 +101,13 @@ def link_person_to_business(person_id: str, business_id: str):
     Person.objects.filter(id=person_id).update(company_id=business_id)
 
 
+def unlink_person_from_business(person_id: str):
+    """Remove the person's company FK. Uses .save() to trigger Neo4j sync signals."""
+    person = Person.objects.get(id=person_id)
+    person.company = None
+    person.save()
+
+
 def create_lead_relationship(person_id: str, product_name: str, stage: str, score: float):
     """Create IS_LEAD_FOR relationship via Lead model."""
     product, _ = Product.objects.get_or_create(
@@ -159,11 +166,41 @@ def update_lead_stage(person_id: str, stage: str) -> int:
     return Lead.objects.filter(person_id=person_id).update(stage=stage)
 
 
+def update_person(person_id: str, data: dict):
+    """Update editable fields on a Person. Uses .save() to trigger Neo4j sync signals."""
+    person = Person.objects.get(id=person_id)
+    for field in ("name", "email", "title", "linkedin_url", "location"):
+        if field in data:
+            setattr(person, field, data[field])
+    person.save()
+
+
+def update_business(business_id: str, data: dict):
+    """Update editable fields on a Business. Uses .save() to trigger Neo4j sync signals."""
+    business = Business.objects.get(id=business_id)
+    for field in ("name", "industry", "size", "website", "location"):
+        if field in data:
+            setattr(business, field, data[field])
+    business.save()
+
+
+def update_contact(contact_id: str, data: dict):
+    """Update editable fields on a Contact (staging record, no Neo4j sync needed)."""
+    contact = Contact.objects.get(id=contact_id)
+    for field in ("name", "email", "title", "linkedin_url", "location",
+                   "company_name", "company_industry", "company_size", "company_website"):
+        if field in data:
+            setattr(contact, field, data[field])
+    contact.save()
+
+
 def update_product(product_id: str, data: dict):
-    Product.objects.filter(id=product_id).update(
-        url=data.get("url"),
-        description=data.get("description"),
-    )
+    """Update editable fields on a Product. Uses .save() to trigger Neo4j sync signals."""
+    product = Product.objects.get(id=product_id)
+    for field in ("name", "url", "description"):
+        if field in data:
+            setattr(product, field, data[field])
+    product.save()
 
 
 def delete_product(product_id: str):
