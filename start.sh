@@ -62,6 +62,24 @@ done
 echo ""
 success "Django is up"
 
+# ── Wait for Neo4j ─────────────────────────────────────────────────────────────
+info "Waiting for Neo4j to be ready..."
+ELAPSED=0
+until docker compose exec -T django python -c "
+from core.graph.driver import get_driver
+d = get_driver(); d.verify_connectivity(); print('ok')
+" &>/dev/null; do
+  if [[ $ELAPSED -ge $MAX_WAIT ]]; then
+    warn "Neo4j did not start within ${MAX_WAIT}s — graph sync may fail."
+    break
+  fi
+  printf '.'
+  sleep 2
+  ELAPSED=$((ELAPSED + 2))
+done
+echo ""
+success "Neo4j is up"
+
 # ── Migrations ────────────────────────────────────────────────────────────────
 info "Running database migrations..."
 docker compose exec -T django python manage.py migrate --no-input
@@ -71,6 +89,11 @@ success "Migrations complete"
 info "Seeding team users (admin / alice / bob — password: password)..."
 docker compose exec -T django python manage.py seed_users 2>/dev/null || true
 success "Users seeded"
+
+# ── Sync Neo4j graph ──────────────────────────────────────────────────────────
+info "Syncing PostgreSQL data to Neo4j for graph visualization..."
+docker compose exec -T django python manage.py resync_neo4j --confirm 2>/dev/null || true
+success "Neo4j graph synced"
 
 # ── Start RabbitMQ consumers ─────────────────────────────────────────────
 info "Starting RabbitMQ lead consumer in the background..."

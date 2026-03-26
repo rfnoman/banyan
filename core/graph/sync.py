@@ -13,14 +13,14 @@ logger = logging.getLogger(__name__)
 
 
 def _safe_delay(task, *args):
-    """Dispatch a sync task, swallowing errors in eager mode (Neo4j down)."""
+    """Dispatch a sync task. Logs errors but does not crash the caller."""
     try:
         task.delay(*args)
     except Exception as exc:
-        if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
-            logger.warning("Neo4j sync skipped (%s) — unavailable: %s", task.name, exc)
-        else:
-            raise
+        logger.error(
+            "Neo4j sync FAILED (%s, args=%s): %s",
+            task.name, args, exc, exc_info=True,
+        )
 
 
 # --------------- Signal receivers ---------------
